@@ -1948,6 +1948,15 @@ fun rememberSettingsItemsState(navBarNav: NavBarNav?, snackbarDisplay: SnackbarD
                     },
                     isDebugSetting = true,
                 ),
+                navBarNav?.let {basicSettingsActionItem(
+                    title = "View app logs",
+                    topLevelType = TopLevelType.Phone,
+                    section = Section.Diagnostics,
+                    action = {
+                        navBarNav.navigateTo(CommonRoutes.LogViewerRoute)
+                    },
+                    show = { debugOptionsEnabled },
+                ) },
                 basicSettingsActionItem(
                     title = "Post test notification",
                     description = "Create a test notification, with actions",
