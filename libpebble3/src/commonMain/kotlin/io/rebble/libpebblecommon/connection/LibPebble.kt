@@ -122,6 +122,7 @@ interface LibPebble : Scanning, RequestSync, LockerApi, NotificationApps, CallMa
     fun updateConfig(config: LibPebbleConfig)
 
     fun getDatabasePath(): String
+    suspend fun closeDatabase()
 
     // Generally, use these. They will act on all watches (or all connected watches, if that makes
     // sense)
@@ -549,6 +550,7 @@ class LibPebble3(
     private val notificationReplies: NotificationReplies,
     private val respectDoNotDisturbMigrator: RespectDoNotDisturbMigrator,
     private val appContext: AppContext,
+    private val database: io.rebble.libpebblecommon.database.Database,
 ) : LibPebble, Scanning by scanning, RequestSync by webSyncManager, LockerApi by locker,
     NotificationApps by notificationApi, Calendar by phoneCalendarSyncer,
     OtherPebbleApps by otherPebbleApps, PKJSToken by jsTokenUtil, Watches by watchManager,
@@ -602,6 +604,10 @@ class LibPebble3(
 
     override fun getDatabasePath(): String {
         return getLibPebbleDatabasePath(appContext)
+    }
+
+    override suspend fun closeDatabase() {
+        database.close()
     }
 
     override val currentCall: MutableStateFlow<Call?> = MutableStateFlow(null)
