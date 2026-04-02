@@ -122,6 +122,10 @@ class FakeLibPebble : LibPebble {
         return ""
     }
 
+    override suspend fun closeDatabase() {
+        // No-op
+    }
+
     override suspend fun sendNotification(
         notification: TimelineNotification,
         actionHandlers: Map<UByte, CustomTimelineActionHandler>?
