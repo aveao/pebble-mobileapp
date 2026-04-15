@@ -122,6 +122,10 @@ class FakeLibPebble : LibPebble {
         return ""
     }
 
+    override fun getPbwCacheDirectory(): String {
+        return ""
+    }
+
     override suspend fun closeDatabase() {
         // No-op
     }
