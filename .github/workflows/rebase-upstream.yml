@@ -1,0 +1,121 @@
+name: Rebase Upstream
+
+on:
+  workflow_dispatch:
+  schedule:
+    # Saturdays 05:00 UTC (~06:00 Berlin winter / 07:00 summer)
+    - cron: '0 5 * * 6'
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+  actions: write
+
+concurrency:
+  group: rebase-upstream
+  cancel-in-progress: false
+
+jobs:
+  rebase:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - name: Setup JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: 17
+
+      - name: Checkout source
+        uses: actions/checkout@v4
+        with:
+          ref: auto-build-base
+          submodules: recursive
+          fetch-depth: 0
+          # persist-credentials stays on (default) so the skill's plain `git push` works
+
+      - name: Configure git and upstream remote
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git remote add upstream https://github.com/coredevices/mobileapp.git
+          git fetch upstream master
+
+      - name: Back up branches to backup/*
+        run: |
+          git fetch origin --prune
+          for ref in $(git for-each-ref --format='%(refname:short)' refs/remotes/origin); do
+            b=${ref#origin/}
+            case "$b" in
+              HEAD|backup/*) continue ;;
+            esac
+            echo "Backing up ${b} -> backup/${b}"
+            git push -f origin "$ref:refs/heads/backup/$b"
+          done
+
+      - name: Cache build deps
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: android-deps-${{ runner.os }}-${{ hashFiles('gradle/**', 'gradlew*', 'gradle.properties', '*.gradle*') }}
+          restore-keys: |
+            android-deps-${{ runner.os }}-
+
+      - name: Use dummy google-services json
+        run: mv androidApp/src/google-services-dummy.json androidApp/src/google-services.json
+
+      - name: Record pre-run auto-build SHA
+        run: git rev-parse origin/auto-build > "$RUNNER_TEMP/pre-autobuild.sha"
+
+      - name: Run OpenCode (rebase-upstream skill)
+        uses: anomalyco/opencode/github@latest
+        env:
+          ZHIPU_API_KEY: ${{ secrets.ZHIPU_API_KEY }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          model: ${{ vars.OPENCODE_MODEL || 'zai-coding-plan/glm-5.3-flash' }}
+          use_github_token: true
+          share: false
+          prompt: |
+            You are running the rebase-upstream procedure on CI. Read
+            .claude/skills/rebase-upstream/SKILL.md at the repo root and carry out the full
+            procedure: preflight, merged-branch detection (step 1), rebasing every listed branch
+            onto upstream/master (step 2), the feature/configexportimport coverage check (step 3),
+            rebuilding auto-build (step 4), and the verification build (step 5).
+
+            Environment notes that override or fill in the skill:
+            - A conflict-free rebase does NOT mean the features ported completely. Even with zero
+              conflicts, check each branch against the new upstream code. Above all, never skip
+              the step 3 coverage check for feature/configexportimport: diff upstream since the
+              old base for new ring preferences, databases, PBW storage changes, and raw Settings
+              keys, and commit any missing data to the backup as a new commit on the branch.
+            - Build deps are preinstalled: JDK 17 (JAVA_HOME is set), google-services.json is in
+              place, Gradle caches are warm. Run the verification command from the skill as-is:
+              ./gradlew :androidApp:assembleDebug compileAndroidHostTest jvmTestClasses
+            - The 'upstream' remote is already added and fetched.
+            - Pushing is ALLOWED here. The skill's "Never push" rule exists only because ave's
+              local SSH key prompts for a passphrase; in this environment origin is already
+              authenticated via GITHUB_TOKEN. After verification passes, force-push exactly the
+              branches step 6 lists, minus any branch you removed from the merge list:
+              git push -f origin auto-build-base feature/logviewer feature/configexportimport \
+                no-play-update-check mimetype-strictening nohorts imaging-compression auto-build
+              Never push to upstream.
+            - Do not open PRs or issues. Your report (step 6 items 1-4) is your final message;
+              it is read from the workflow logs.
+
+      - name: Trigger auto build if auto-build moved
+        if: success()
+        run: |
+          git fetch origin auto-build
+          OLD=$(cat "$RUNNER_TEMP/pre-autobuild.sha")
+          NEW=$(git rev-parse origin/auto-build)
+          if [ "$OLD" != "$NEW" ]; then
+            gh workflow run auto-build.yml --ref auto-build --repo "$GITHUB_REPOSITORY"
+          else
+            echo "auto-build unchanged; skipping auto-build trigger"
+          fi
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
