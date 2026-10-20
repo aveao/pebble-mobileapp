@@ -71,6 +71,8 @@ import io.rebble.libpebblecommon.plugin.PluginErrors
 import io.rebble.libpebblecommon.plugin.PluginMetadata
 import io.rebble.libpebblecommon.plugin.PluginOAuthApi
 import io.rebble.libpebblecommon.plugin.SourceUpdate
+import io.rebble.libpebblecommon.plugin.files.PluginFileAccess
+import io.rebble.libpebblecommon.plugin.files.PluginFileAccessApi
 import io.rebble.libpebblecommon.services.DailySleep
 import io.rebble.libpebblecommon.services.FirmwareVersion
 import io.rebble.libpebblecommon.services.WatchInfo
@@ -109,7 +111,8 @@ sealed class PebbleConnectionEvent {
 @Stable
 interface LibPebble : Scanning, RequestSync, LockerApi, NotificationApps, CallManagement, Calendar,
     OtherPebbleApps, PKJSToken, Watches, Errors, Contacts, AnalyticsEvents, HealthApi, WatchPrefs,
-    SystemGeolocation, Timeline, Vibrations, Weather, HealthDataApi, Plugins, AppPermissionsApi {
+    SystemGeolocation, Timeline, Vibrations, Weather, HealthDataApi, Plugins, AppPermissionsApi,
+    PluginFileAccessApi {
     fun init()
 
     val config: StateFlow<LibPebbleConfig>
@@ -498,6 +501,7 @@ class LibPebble3(
     private val weatherManager: WeatherManager,
     appPermissions: AppPermissions,
     pluginClient: PluginClient,
+    pluginFileAccess: PluginFileAccess,
 ) : LibPebble, Scanning by scanning, RequestSync by webSyncManager, LockerApi by locker,
     NotificationApps by notificationApi, Calendar by phoneCalendarSyncer,
     OtherPebbleApps by otherPebbleApps, PKJSToken by jsTokenUtil, Watches by watchManager,
@@ -505,7 +509,7 @@ class LibPebble3(
     HealthApi by health, SystemGeolocation by systemGeolocation, Timeline by timeline,
     Vibrations by notificationApi, WatchPrefs by watchPreferences, Weather by weatherManager,
     HealthDataApi by health, Plugins by pluginClient,
-    AppPermissionsApi by appPermissions {
+    AppPermissionsApi by appPermissions, PluginFileAccessApi by pluginFileAccess {
     private val logger = Logger.withTag("LibPebble3")
     private val initialized = AtomicBoolean(false)
 

@@ -58,7 +58,7 @@ val IntegrationProvider.externalDestination: String? get() = title.takeUnless { 
  */
 fun List<IntegrationProvider>.visibleDestinations(pluginsEnabled: Boolean): List<IntegrationProvider> =
     if (pluginsEnabled) {
-        filter { it.storesItemsLocally || it == BuiltInIntegrationProviders.Obsidian || it.isExternalPlugin }
+        filter { it.storesItemsLocally || it.isExternalPlugin }
     } else {
         this
     }

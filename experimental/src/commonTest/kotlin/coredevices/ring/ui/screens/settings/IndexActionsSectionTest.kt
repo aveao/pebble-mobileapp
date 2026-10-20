@@ -224,11 +224,11 @@ class IndexActionsSectionTest {
     )
 
     @Test
-    fun `with plugins on only the built-in feed, Obsidian and plugins are offered`() {
+    fun `with plugins on only the built-in feed and plugins are offered`() {
         val plugin = PblPluginIntegrationProvider.forPlugin(thingsPlugin(IntegrationSupport.Note).metadata, FakePlugins())!!
         val all = listOf(Index, Notion, Obsidian, GoogleTasks, IosReminders, Tasker, plugin)
 
-        assertEquals(listOf(Index, Obsidian, plugin), all.visibleDestinations(pluginsEnabled = true))
+        assertEquals(listOf(Index, plugin), all.visibleDestinations(pluginsEnabled = true))
         assertEquals(all, all.visibleDestinations(pluginsEnabled = false))
     }
 

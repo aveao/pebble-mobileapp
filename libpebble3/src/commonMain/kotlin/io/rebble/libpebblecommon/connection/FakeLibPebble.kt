@@ -67,6 +67,10 @@ import io.rebble.libpebblecommon.plugin.Plugin
 import io.rebble.libpebblecommon.plugin.PluginErrors
 import io.rebble.libpebblecommon.plugin.PluginMetadata
 import io.rebble.libpebblecommon.plugin.SourceUpdate
+import io.rebble.libpebblecommon.permissions.PermissionDecision
+import io.rebble.libpebblecommon.plugin.files.FileAccessMode
+import io.rebble.libpebblecommon.plugin.files.FileEntryKind
+import io.rebble.libpebblecommon.plugin.files.FileHandleInfo
 import io.rebble.libpebblecommon.protocolhelpers.PebblePacket
 import io.rebble.libpebblecommon.services.DailySleep
 import io.rebble.libpebblecommon.services.FirmwareVersion
@@ -525,6 +529,15 @@ class FakeLibPebble : LibPebble {
     override fun nativePlugins(): Flow<List<PluginMetadata>> = flowOf(emptyList())
 
     override fun configMessageTarget(pluginUuid: String): ConfigMessageTarget? = null
+
+    override suspend fun pluginFileHandles(appUuid: Uuid): List<FileHandleInfo> = emptyList()
+
+    override suspend fun checkFilePermission(appUuid: Uuid, mode: FileAccessMode) = PermissionDecision.Denied
+
+    override suspend fun grantPluginFile(appUuid: Uuid, scope: String, mode: FileAccessMode, handle: String) =
+        FileHandleInfo(scope, FileEntryKind.File, scope, mode)
+
+    override suspend fun revokePluginFile(appUuid: Uuid, scope: String) = Unit
 
     override fun getAllPlugins(): List<PluginMetadata> = emptyList()
 

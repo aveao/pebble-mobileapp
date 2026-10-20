@@ -17,6 +17,9 @@ import io.rebble.libpebblecommon.js.GEOLOCATION_JS
 import io.rebble.libpebblecommon.js.WEBSOCKET_JS
 import io.rebble.libpebblecommon.permissions.NetworkAccess
 import io.rebble.libpebblecommon.permissions.RunningApps
+import io.rebble.libpebblecommon.plugin.files.PluginFileAccess
+import io.rebble.libpebblecommon.plugin.files.PluginFileSystem
+import io.rebble.libpebblecommon.plugin.files.PluginFileSystemJsBridge
 import io.rebble.libpebblecommon.storage.pluginSecureStorage
 import kotlin.concurrent.Volatile
 import kotlinx.coroutines.CompletableDeferred
@@ -59,6 +62,8 @@ class JsPlugin(
     private val httpInterceptorManager: HttpInterceptorManager,
     private val networkAccess: (prompt: Boolean) -> NetworkAccess,
     private val runningApps: RunningApps,
+    private val fileAccess: PluginFileAccess,
+    private val fileSystem: PluginFileSystem,
     /** Host-side hosted OAuth, when available. Only reachable by plugins that declare a connector. */
     private val oauthApi: PluginOAuthApi? = null,
 ) : Plugin, ConfigMessageTarget {
@@ -216,11 +221,14 @@ class JsPlugin(
             PluginOAuthJsBridge(scope, { js -> evals.trySend(js) }, pluginUuid.toString(), manifest.oauth.keys, it)
         }
         val secureStorageBridge = PluginSecureStorageJsBridge(scope, { js -> evals.trySend(js) }, secureStorage)
+        val fileSystemBridge = PluginFileSystemJsBridge(scope, { js -> evals.trySend(js) }, pluginUuid, fileAccess, fileSystem)
         val geolocation = EngineGeolocation(scope, { js -> evals.trySend(js) }, pluginUuid, prompt)
-        val interfaces = listOfNotNull(Bridge(), xhr, webSockets, localStorage, geolocation, oauthBridge, secureStorageBridge)
+        val interfaces = listOfNotNull(
+            Bridge(), xhr, webSockets, localStorage, geolocation, oauthBridge, secureStorageBridge, fileSystemBridge,
+        )
         val engine = JsEngine(appContext, scope, name, interfaces)
         return Session(
-            engine, xhr, webSockets, localStorage, geolocation, oauthBridge, secureStorageBridge, evals,
+            engine, xhr, webSockets, localStorage, geolocation, oauthBridge, secureStorageBridge, fileSystemBridge, evals,
             scope.launch { for (js in evals) engine.eval(js) },
         )
     }
@@ -233,6 +241,7 @@ class JsPlugin(
         private val geolocation: EngineGeolocation,
         private val oauthBridge: PluginOAuthJsBridge?,
         private val secureStorageBridge: PluginSecureStorageJsBridge,
+        private val fileSystemBridge: PluginFileSystemJsBridge,
         private val evals: Channel<String>,
         private val pump: Job,
     ) {
@@ -247,6 +256,7 @@ class JsPlugin(
             engine.eval(PLUGIN_HOST_JS)
             oauthBridge?.let { engine.eval(PluginOAuthJsBridge.INSTALL_JS) }
             engine.eval(PluginSecureStorageJsBridge.INSTALL_JS)
+            engine.eval(PluginFileSystemJsBridge.INSTALL_JS)
             engine.eval(script())
         }
 
@@ -259,6 +269,7 @@ class JsPlugin(
             geolocation.close()
             oauthBridge?.close()
             secureStorageBridge.close()
+            fileSystemBridge.close()
             engine.stop()
         }
     }

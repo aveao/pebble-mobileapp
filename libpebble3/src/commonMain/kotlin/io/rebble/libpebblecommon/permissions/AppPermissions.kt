@@ -314,6 +314,7 @@ internal fun permissionStatuses(
     pluginDefined: Map<String, PluginDefinedPermission>,
 ): List<AppPermissionStatus> = rows.filterNot { config.disables(it.permission) }.mapNotNull { row ->
     val status = when {
+        rows.deniesBareFilePermissionOf(row.permission) -> PermissionStatus.Denied
         row.granted == true -> PermissionStatus.Granted
         row.granted == false -> PermissionStatus.Denied
         subject == null -> return@mapNotNull null
@@ -367,7 +368,10 @@ private fun decideAsking(
     pluginDefined: Map<String, PluginDefinedPermission>,
 ): PermissionDecision {
     val kind = permissionKind(permission, pluginDefined) ?: return PermissionDecision.Denied
+    if (rows.deniesBareFilePermissionOf(permission)) return PermissionDecision.Denied
     rows.decisionOf(permission)?.let { return if (it) PermissionDecision.Granted else PermissionDecision.Denied }
+    // A file is only ever granted by the user picking it; no policy hands one out.
+    if (fileScopeOf(permission) != null) return PermissionDecision.Denied
     // An app that declares its permissions gets domain-scoped networking, never global.
     if (permission == PluginPermissions.GLOBAL_INTERNET && !subject.legacy) return PermissionDecision.Denied
     if (subject.legacy && !config.askLegacyAppsForPermissions && isLegacyImplicit(permission, subject.hasAndroidCompanion)) {
@@ -400,5 +404,17 @@ fun permissionKind(key: String, pluginDefined: Map<String, PluginDefinedPermissi
 private fun List<LockerAppPermission>.coveringRow(key: String): LockerAppPermission? =
     coveringKeys(key).firstNotNullOfOrNull { covering -> firstOrNull { it.permission == covering } }
 
-private fun List<LockerAppPermission>.decisionOf(key: String): Boolean? =
-    coveringKeys(key).firstNotNullOfOrNull { covering -> firstOrNull { it.permission == covering }?.granted }
+/**
+ * The key's own decision, else a covering one. Denying `WriteFiles` only denies a `ReadFiles` the
+ * app never asked for on its own: a declared, undecided `ReadFiles` stays its own choice, so the
+ * user can allow reading while refusing writing.
+ */
+private fun List<LockerAppPermission>.decisionOf(key: String): Boolean? {
+    val decision = coveringKeys(key).firstNotNullOfOrNull { covering -> firstOrNull { it.permission == covering }?.granted }
+    val ownChoice = permissionOf(key) == PluginPermissions.READ_FILES && any { it.permission == key && it.granted == null }
+    return if (decision == false && ownChoice) null else decision
+}
+
+/** A picked entry is only as allowed as the bare `ReadFiles` / `WriteFiles` it was picked under. */
+internal fun List<LockerAppPermission>.deniesBareFilePermissionOf(key: String): Boolean =
+    fileScopeOf(key) != null && decisionOf(permissionOf(key)) == false

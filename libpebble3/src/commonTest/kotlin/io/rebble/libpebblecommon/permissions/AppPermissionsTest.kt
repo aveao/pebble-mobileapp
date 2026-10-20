@@ -21,8 +21,10 @@ import io.rebble.libpebblecommon.plugin.PluginPermissions.INTERNET
 import io.rebble.libpebblecommon.plugin.PluginPermissions.LOCAL_NETWORK
 import io.rebble.libpebblecommon.plugin.PluginPermissions.LOCATION
 import io.rebble.libpebblecommon.plugin.PluginPermissions.LEGACY_PEBBLEKIT
+import io.rebble.libpebblecommon.plugin.PluginPermissions.READ_FILES
 import io.rebble.libpebblecommon.plugin.PluginPermissions.READ_WATCH_SETTINGS
 import io.rebble.libpebblecommon.plugin.PluginPermissions.TIMELINE
+import io.rebble.libpebblecommon.plugin.PluginPermissions.WRITE_FILES
 import io.rebble.libpebblecommon.plugin.PluginPermissions.WRITE_WATCH_SETTINGS
 import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.Flow
@@ -87,6 +89,59 @@ class DecidePermissionTest {
     @Test
     fun unknownPermissionIsDenied() {
         assertEquals(Denied, decide("Teleport"))
+    }
+
+    @Test
+    fun aFileIsOnlyGrantedByBeingPicked() {
+        val key = readFilesKey("content://docs/tree/notes")
+        assertEquals(Denied, decide(key))
+        assertEquals(Denied, decide(key, config = WatchConfig(enablePlugins = true, permissionPolicy = PermissionPolicy.NeverAsk)))
+        assertEquals(Denied, decide(key, rows = listOf(row(READ_FILES, true))))
+        assertEquals(Granted, decide(key, rows = listOf(row(key, true))))
+        assertEquals(Denied, decide(writeFilesKey("content://docs/tree/notes"), rows = listOf(row(key, true))))
+        assertEquals(NeedsApproval, decide(WRITE_FILES))
+    }
+
+    @Test
+    fun aWriteFilesDecisionCoversReadFiles() {
+        val scope = "content://docs/tree/notes"
+        assertEquals(Granted, decide(READ_FILES, rows = listOf(row(WRITE_FILES, true))))
+        assertEquals(Denied, decide(READ_FILES, rows = listOf(row(WRITE_FILES, false))))
+        assertEquals(Denied, decide(READ_FILES, rows = listOf(row(READ_FILES, false), row(WRITE_FILES, true))))
+        assertEquals(Granted, decide(readFilesKey(scope), rows = listOf(row(writeFilesKey(scope), true))))
+        assertEquals(Denied, decide(readFilesKey(scope), rows = listOf(row(writeFilesKey(scope), false))))
+        assertEquals(Denied, decide(readFilesKey(scope), rows = listOf(row(WRITE_FILES, true))))
+    }
+
+    @Test
+    fun denyingWriteFilesLeavesADeclaredReadFilesItsOwnChoice() {
+        val scope = "content://docs/tree/notes"
+        val declaredBoth = listOf(row(READ_FILES), row(WRITE_FILES, false))
+        assertEquals(Granted, decide(READ_FILES, rows = declaredBoth))
+        val alwaysAsk = WatchConfig(enablePlugins = true, permissionPolicy = PermissionPolicy.AlwaysAsk)
+        assertEquals(NeedsApproval, decide(READ_FILES, rows = declaredBoth, config = alwaysAsk))
+        // So its picks stay, and a read-write pick drops to read-only rather than off.
+        assertEquals(Granted, decide(readFilesKey(scope), rows = declaredBoth + row(readFilesKey(scope), true)))
+        assertEquals(Granted, decide(readFilesKey(scope), rows = declaredBoth + row(writeFilesKey(scope), true)))
+        assertEquals(Denied, decide(writeFilesKey(scope), rows = declaredBoth + row(writeFilesKey(scope), true)))
+        // Read's own decision still wins either way.
+        assertEquals(Denied, decide(READ_FILES, rows = listOf(row(READ_FILES, false), row(WRITE_FILES, false))))
+        assertEquals(Granted, decide(READ_FILES, rows = listOf(row(READ_FILES, true), row(WRITE_FILES, false))))
+    }
+
+    @Test
+    fun denyingTheBareFilePermissionTurnsOffEveryEntryPickedUnderIt() {
+        val scope = "content://docs/tree/notes"
+        assertEquals(Denied, decide(readFilesKey(scope), rows = listOf(row(READ_FILES, false), row(readFilesKey(scope), true))))
+        assertEquals(Denied, decide(writeFilesKey(scope), rows = listOf(row(WRITE_FILES, false), row(writeFilesKey(scope), true))))
+        // Without a ReadFiles decision of its own, denying WriteFiles denies reading too.
+        assertEquals(Denied, decide(readFilesKey(scope), rows = listOf(row(WRITE_FILES, false), row(writeFilesKey(scope), true))))
+        // Denying only writing leaves a read-write pick readable.
+        val readOnly = listOf(row(READ_FILES, true), row(WRITE_FILES, false), row(writeFilesKey(scope), true))
+        assertEquals(Granted, decide(readFilesKey(scope), rows = readOnly))
+        assertEquals(Denied, decide(writeFilesKey(scope), rows = readOnly))
+        // Allowing it again brings the pick back.
+        assertEquals(Granted, decide(readFilesKey(scope), rows = listOf(row(READ_FILES, true), row(readFilesKey(scope), true))))
     }
 
     @Test
@@ -309,6 +364,36 @@ class PermissionStatusesTest {
     fun withoutItsLockerEntryOnlyDecisionsAreKnown() {
         assertEquals(mapOf(CALENDAR to PermissionStatus.Denied), statuses(null, row(CALENDAR, false), row(LOCATION)))
     }
+
+    @Test
+    fun aPickedEntryReadsDeniedWhileItsBarePermissionIs() {
+        val vault = writeFilesKey("content://docs/tree/notes")
+        assertEquals(
+            mapOf(WRITE_FILES to PermissionStatus.Denied, vault to PermissionStatus.Denied),
+            statuses(subject(), row(WRITE_FILES, false), row(vault, true)),
+        )
+        assertEquals(
+            mapOf(WRITE_FILES to PermissionStatus.Granted, vault to PermissionStatus.Granted),
+            statuses(subject(), row(WRITE_FILES, true), row(vault, true)),
+        )
+    }
+
+    @Test
+    fun aDeclaredReadFilesStaysListedWhileWriteFilesIsDenied() {
+        // Turning write off must leave read on the page, so it can be allowed on its own.
+        assertEquals(
+            mapOf(READ_FILES to PermissionStatus.AllowedAutomatically, WRITE_FILES to PermissionStatus.Denied),
+            statuses(subject(), row(READ_FILES), row(WRITE_FILES, false)),
+        )
+        assertEquals(
+            mapOf(READ_FILES to PermissionStatus.Waiting, WRITE_FILES to PermissionStatus.Denied),
+            statuses(subject(), row(READ_FILES), row(WRITE_FILES, false), config = WatchConfig(enablePlugins = true, permissionPolicy = PermissionPolicy.AlwaysAsk)),
+        )
+        assertEquals(
+            mapOf(READ_FILES to PermissionStatus.AllowedAutomatically, WRITE_FILES to PermissionStatus.Granted),
+            statuses(subject(), row(READ_FILES), row(WRITE_FILES, true)),
+        )
+    }
 }
 
 class CanExfiltrateTest {
@@ -358,6 +443,10 @@ internal class FakePermissionDao : LockerAppPermissionDao {
 
     override suspend fun deleteByAppUuid(appUuid: Uuid) {
         rows.value = rows.value.filterKeys { it.first != appUuid }
+    }
+
+    override suspend fun deleteByAppUuidAndPermissions(appUuid: Uuid, permissions: List<String>) {
+        rows.value = rows.value.filterKeys { it.first != appUuid || it.second !in permissions }
     }
 
     override suspend fun getByAppUuid(appUuid: Uuid) = rows.value.values.filter { it.appUuid == appUuid }
@@ -658,6 +747,21 @@ class InstallReviewTest {
             declares(internet("a.example.com", ".B.example.com"), PluginPermission(LOCAL_NETWORK)).all,
         )
         assertEquals(listOf(INTERNET), declares(PluginPermission(INTERNET)).all)
+    }
+
+    @Test
+    fun aManifestGetsOnlyTheBareFilePermission() {
+        assertEquals(listOf(READ_FILES), PluginPermission(READ_FILES, mapOf("paths" to listOf("/Documents"))).keys())
+        assertEquals(listOf(READ_FILES), PluginPermission(readFilesKey("/Documents")).keys())
+        assertEquals(listOf(WRITE_FILES), PluginPermission(writeFilesKey("content://docs/tree/x")).keys())
+    }
+
+    @Test
+    fun readAndWriteFilesAreBothReviewed() = runTest {
+        val both = declares(PluginPermission(READ_FILES), PluginPermission(WRITE_FILES))
+        assertEquals(listOf(READ_FILES, WRITE_FILES), both.all)
+        config = WatchConfig(enablePlugins = true, permissionPolicy = PermissionPolicy.AlwaysAsk)
+        assertEquals(setOf(READ_FILES, WRITE_FILES), reviewed(both))
     }
 
     @Test

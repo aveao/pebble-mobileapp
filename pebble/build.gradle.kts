@@ -120,6 +120,7 @@ kotlin {
         commonTest {
             dependencies {
                 implementation(libs.kotlin.test)
+                implementation(libs.coroutines.test)
             }
         }
 
@@ -130,6 +131,7 @@ kotlin {
                 // dependencies declared in commonMain.
                 implementation(compose.uiTooling)
                 implementation(libs.androidx.activity.compose)
+                implementation(libs.androidx.documentfile)
                 // gitlive's compile variant declares com.google.firebase:* without versions.
                 implementation(project.dependencies.platform(libs.firebase.bom))
             }

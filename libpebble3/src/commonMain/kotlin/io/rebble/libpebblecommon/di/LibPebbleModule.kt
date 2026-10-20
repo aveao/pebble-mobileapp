@@ -140,6 +140,9 @@ import io.rebble.libpebblecommon.plugin.LockerPluginLoader
 import io.rebble.libpebblecommon.plugin.PluginOAuthApi
 import io.rebble.libpebblecommon.plugin.PluginClient
 import io.rebble.libpebblecommon.plugin.PluginRegistry
+import io.rebble.libpebblecommon.plugin.files.PluginFileAccess
+import io.rebble.libpebblecommon.plugin.files.PluginFileSystem
+import io.rebble.libpebblecommon.plugin.files.platformPluginFileSystem
 import io.rebble.libpebblecommon.plugin.WatchStatePlugin
 import io.rebble.libpebblecommon.plugin.WatchSettingsPlugin
 import io.rebble.libpebblecommon.services.AppFetchService
@@ -434,6 +437,7 @@ fun initKoin(
                         get(),
                         get(),
                         get(),
+                        get(),
                     )
                 } bind LibPebble::class
                 single { RealConnectionScopeFactory(koin) } bind ConnectionScopeFactory::class
@@ -478,7 +482,9 @@ fun initKoin(
                 singleOf(::LockerInstalledApps) bind InstalledApps::class
                 singleOf(::AppPermissions)
                 singleOf(::PluginClient)
-                single { JsPluginFactory(get(), get(), get(), get(), get(), get(), pluginOAuthApi) }
+                single<PluginFileSystem> { platformPluginFileSystem(get(), get()) }
+                singleOf(::PluginFileAccess)
+                single { JsPluginFactory(get(), get(), get(), get(), get(), get(), get(), get(), pluginOAuthApi) }
                 singleOf(::BundledAppInstaller)
                 singleOf(::LockerPluginLoader)
                 singleOf(::FirmwareDownloader)

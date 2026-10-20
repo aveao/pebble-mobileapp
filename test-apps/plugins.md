@@ -164,10 +164,16 @@ Declare what your app and its plugin need once, in the `pebble` block of `packag
 
 The built-in permissions are `Internet`, `LocalNetwork`, `Location`, `Notifications`, `Calendar`,
 `Contacts`, `Timeline`, `ReadWatchSettings`/`WriteWatchSettings`, `ReadMusic`/`ControlMusic`,
-`LaunchApps`, `LegacyPebbleKit` and `Health`.
+`LaunchApps`, `ReadFiles`/`WriteFiles`, `LegacyPebbleKit` and `Health`.
 
 - Each `Internet` domain is its own permission and covers its subdomains. `LocalNetwork` covers
   devices on the LAN.
+- `ReadFiles` and `WriteFiles` let your settings page ask the user for a file or folder. They take
+  no parameters: you can't name paths in the manifest. Each entry the user picks is its own
+  permission (`ReadFiles/<path>`, or `WriteFiles/<path>` for read-write), listed on the app's page
+  like any other, and nothing is granted without a pick. `WriteFiles` includes reading: declare
+  both to let the user allow reading but not writing, and allowing `WriteFiles` allows `ReadFiles`
+  with it. See [File access](#file-access).
 - `LegacyPebbleKit` lets your watchapp talk to a companion app over PebbleKit Classic. A PebbleKit 2
   companion doesn't need declaring: each package your appinfo lists is asked about on its own.
 - `Health` isn't enforced yet: health data is read on the watch, so enforcing it needs permissions
@@ -424,6 +430,13 @@ What a plugin has to work with:
   `await Pebble.oauth.authorize("todoist")` for a token and
   `Pebble.oauth.refresh("todoist", broker_refresh)` to renew it; keep both in `Pebble.secureStorage`. The connector has to be registered
   with the Pebble app store (see the `todoist/` example).
+- **`Pebble.fileSystem`** for files and folders on the phone the user has handed your plugin from
+  its settings page (see [File access](#file-access)); needs `ReadFiles` / `WriteFiles`.
+  `await Pebble.fileSystem.getHandle(id)` gives a `FileSystemFileHandle` /
+  `FileSystemDirectoryHandle` with the browser
+  [File System Access API](https://developer.mozilla.org/en-US/docs/Web/API/File_System_API)
+  surface: `getFile()`, `createWritable()`, `getFileHandle()`, `getDirectoryHandle()`,
+  `removeEntry()`, `entries()`, `queryPermission()`.
 - Nothing else: unlike PKJS, a plugin has no WebView APIs.
 
 Return every property and shape you can; text shapes cost nothing once you have the data, and the
@@ -451,6 +464,51 @@ Pebble.addEventListener("configmessage", (e) => e.respond({ theme: theme() }));
 ```
 
 Wait for `ready` before sending: the plugin is started when the page opens.
+
+## File access
+
+A plugin can read and write to files/directories the user permits. Declare `ReadFiles` 
+(and/or `WriteFiles` to change files; allowing it allows reading too) in `usesPermissions`.
+
+The plugin must have the read/write permission to use the associated mode with the file picker
+(called from the settings page) which then grants additional access to that specific file or
+directory in that mode.
+
+The resulting file(s) or folder can be stored and reused outside the settings page, such as during 
+plugin use to read/write files in response to user requests or to facilitate providing data to apps.
+
+```javascript
+// in the settings page
+const folder = await Pebble.showDirectoryPicker({ mode: "readwrite" });         // or
+const [file] = await Pebble.showOpenFilePicker({ types: [{ accept: { "text/markdown": [".md"] } }] });
+await Pebble.sendMessage("plugin", { type: "setFolder", id: folder.id });
+const held = await Pebble.fileSystem.grants();     // [{ id, kind, name, mode }]
+await Pebble.fileSystem.revoke(held[0].id);
+
+// in plugin.js
+Pebble.registerConfigHandler((message, respond) => {
+  if (message.type === "setFolder") localStorage.setItem("folder", message.id);
+  respond({ ok: true });
+});
+
+Pebble.registerActionHandler(async (request, respond) => {
+  const dir = await Pebble.fileSystem.getHandle(localStorage.getItem("folder"));
+  const file = await dir.getFileHandle("inbox.md", { create: true });
+  const existing = await (await file.getFile()).text();
+  const writable = await file.createWritable();
+  await writable.write(existing + "\n- " + request.args.text);
+  await writable.close();
+  for await (const [name, entry] of dir.entries()) console.log(name, entry.kind);
+  respond.ok({ text: "Added." });
+});
+```
+
+Cancelling the picker rejects with an `AbortError`; a plugin the user hasn't allowed `ReadFiles`
+(or `WriteFiles`, for a read-write pick) gets `NotAllowedError`, as does attempting to write through 
+a read-only pick or any use of an entry the user has since withdrawn.
+
+Plugins can revoke access they no longer need (such as if the user is re-configuring the plugin) via 
+`Pebble.fileSystem.revoke(id)`.
 
 The `plugin-test` dashboard shows what this makes possible: its settings page asks the app's PKJS
 for the catalogue of everything installed (built from `enumeratePlugins`) to fill its dropdowns. Each

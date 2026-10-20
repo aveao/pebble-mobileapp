@@ -135,6 +135,7 @@ kotlin {
 
         androidMain.dependencies {
             implementation(libs.androidx.core.ktx)
+            implementation(libs.androidx.documentfile)
             implementation(libs.pebblekit)
         }
 
