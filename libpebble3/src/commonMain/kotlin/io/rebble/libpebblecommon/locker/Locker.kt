@@ -36,11 +36,13 @@ import io.rebble.libpebblecommon.permissions.AppPermissionStatus
 import io.rebble.libpebblecommon.permissions.AppPermissions
 import io.rebble.libpebblecommon.storage.pluginSecureStorage
 import io.rebble.libpebblecommon.permissions.InstallReview
+import io.rebble.libpebblecommon.permissions.NetworkGate
 import io.rebble.libpebblecommon.permissions.RequestedPermissions
 import io.rebble.libpebblecommon.permissions.isLegacy
 import io.rebble.libpebblecommon.permissions.requestedPermissions
 import io.rebble.libpebblecommon.plugin.Connections
 import io.rebble.libpebblecommon.plugin.PhoneNetworkMonitor
+import io.rebble.libpebblecommon.plugin.PluginNetworkVerdict
 import io.rebble.libpebblecommon.plugin.PluginManifest
 import io.rebble.libpebblecommon.web.LockerModelWrapper
 import io.rebble.libpebblecommon.web.WebSyncManager
@@ -189,8 +191,17 @@ class Locker(
     override suspend fun appConfigPageUrl(uuid: Uuid): String? {
         // V2 config pages won't work with plugins disabled (no messaging channel)
         if (!config.value.enablePlugins) return null
-        val page = lockerEntryDao.getEntryFlow(uuid).first()?.configPage ?: return null
-        if (page.startsWith("http://") || page.startsWith("https://")) return page
+        val entry = lockerEntryDao.getEntryFlow(uuid).first() ?: return null
+        val page = entry.configPage ?: return null
+        if (page.startsWith("http://") || page.startsWith("https://")) {
+            // Like a PKJS config URL (`JsRunner.mayOpen`), opening it can carry data off the phone.
+            val verdict = NetworkGate(permissions, entry.title, uuid).check(page, wait = true)
+            if (verdict is PluginNetworkVerdict.Denied) {
+                logger.w { "Not opening ${entry.title}'s config page: ${verdict.reason}" }
+                return null
+            }
+            return page
+        }
         // A bundled page still needs its HTML from the pbw, delivered as a data URL.
         return pbwFor(uuid)?.getTextFile(page)?.let { "data:text/html;charset=utf-8,${it.encodeURLPathPart()}" }
     }
