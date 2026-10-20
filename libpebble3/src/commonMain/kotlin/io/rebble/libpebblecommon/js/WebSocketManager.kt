@@ -29,7 +29,6 @@ private const val NORMAL_CLOSURE = 1000
 private const val NO_STATUS_RECEIVED = 1005
 private const val ABNORMAL_CLOSURE = 1006
 
-// Host too: the network permission is checked against the URL's host.
 private val UPGRADE_HEADERS = setOf("host", "connection", "upgrade")
 
 class WebSocketManager(
