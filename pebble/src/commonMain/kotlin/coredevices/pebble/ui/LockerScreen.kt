@@ -1320,7 +1320,7 @@ fun AppImage(entry: CommonApp, modifier: Modifier, size: Dp) {
                 val url = when (entry.type) {
                     AppType.Watchapp -> entry.screenshotImageUrl
                     AppType.Watchface -> entry.screenshotImageUrl
-                    AppType.Plugin -> entry.screenshotImageUrl
+                    AppType.Plugin -> entry.listImageUrl ?: entry.screenshotImageUrl
                 }
                 ImageRequest.Builder(context)
                     .memoryCachePolicy(CachePolicy.ENABLED)
