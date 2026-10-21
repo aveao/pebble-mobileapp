@@ -12,6 +12,10 @@ object CommonRoutes {
         val pebble: Boolean,
         val recordingPath: String? = null,
         val screenshotPath: String? = null,
+        /** Deep link only: base64url-encoded context attached to the report. */
+        val context: String? = null,
+        /** Deep link only: prefilled description. */
+        val text: String? = null,
     ) : CoreRoute
 
     @Serializable

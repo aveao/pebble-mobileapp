@@ -8,25 +8,27 @@ import coredevices.indexai.data.entity.RecordingEntryErrorType
 import coredevices.indexai.data.entity.RecordingEntryStatus
 import coredevices.indexai.data.entity.isAnswer
 import coredevices.indexai.database.dao.ConversationMessageDao
-import coredevices.mcp.data.SemanticResult
-import coredevices.ring.data.IndexTimestamp
-import coredevices.ring.data.InflightIndexNotification
-import coredevices.ring.agent.integrations.providers.IntegrationProviderRepository
-import coredevices.ring.data.NoteShortcutType
 import coredevices.libindex.database.entity.RingTransfer
 import coredevices.libindex.database.entity.RingTransferStatus
+import coredevices.libindex.database.repository.RingTransferRepository
+import coredevices.mcp.data.SemanticResult
+import coredevices.ring.agent.integrations.providers.IntegrationProviderRepository
+import coredevices.ring.data.IndexTimestamp
+import coredevices.ring.data.InflightIndexNotification
+import coredevices.ring.data.NoteShortcutType
 import coredevices.ring.data.entity.room.TraceEventData
 import coredevices.ring.database.Preferences
 import coredevices.ring.database.room.repository.RecordingRepository
-import coredevices.libindex.database.repository.RingTransferRepository
 import coredevices.ring.ui.UITimeUtil
 import coredevices.ring.ui.components.chat.actionText
 import coredevices.ring.ui.navigation.RingRoutes
 import coredevices.ring.util.trace.RingTraceSession
+import coredevices.util.BugReportContext
 import coredevices.util.Platform
 import coredevices.util.isAndroid
 import coredevices.util.transcription.LocalTranscriptionService
 import coredevices.util.transcription.SpeechModelPrompt
+import io.ktor.http.encodeURLParameter
 import io.ktor.utils.io.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.FlowPreview
@@ -40,7 +42,6 @@ import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.filterIsInstance
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
@@ -517,7 +518,9 @@ class IndexNotificationManager(
 
     suspend fun sendBugReportPrompt(
         title: String,
-        content: String
+        content: String,
+        context: String? = null,
+        reportText: String? = null
     ) {
         val now = Clock.System.now()
         lastBugReportPrompt?.let { last ->
@@ -533,7 +536,15 @@ class IndexNotificationManager(
             contentText = content,
             inProgress = null,
             localOnly = false,
-            deepLink = "pebblecore://deep-link/bug-report?pebble=false"
+            deepLink = buildString {
+                append("pebblecore://deep-link/bug-report?pebble=false")
+                context?.let {
+                    append("&context=${BugReportContext.encodeBugReportContext(context)}")
+                }
+                reportText?.let {
+                    append("&text=${reportText.encodeURLParameter()}")
+                }
+            }
         )
         platformIndexNotificationManager.notify(notif)
     }

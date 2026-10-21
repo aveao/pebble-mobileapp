@@ -35,6 +35,7 @@ import coredevices.ring.ui.navigation.addRingRoutes
 import coredevices.ring.ui.screens.IndexScreen
 import coredevices.ring.ui.theme.IndexThemeHost
 import coredevices.ui.GenericWebViewScreen
+import coredevices.util.BugReportContext
 import coredevices.util.CommonBuildKonfig
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
@@ -134,7 +135,7 @@ fun AppNavHost(navController: NavHostController, startDestination: Any) {
         if (CommonBuildKonfig.QA) {
             composable<CommonRoutes.BugReport>(
                 deepLinks = listOf(
-                    NavDeepLink("pebblecore://deep-link/bug-report?pebble={pebble}")
+                    NavDeepLink("pebblecore://deep-link/bug-report?pebble={pebble}&context={context}&text={text}")
                 )
             ) {
                 val route: CommonRoutes.BugReport = it.toRoute()
@@ -143,6 +144,8 @@ fun AppNavHost(navController: NavHostController, startDestination: Any) {
                     pebble = route.pebble,
                     recordingPath = route.recordingPath,
                     screenshotPath = route.screenshotPath,
+                    screenContext = BugReportContext.decodeBugReportContext(route.context),
+                    initialText = route.text,
                 )
             }
             composable<CommonRoutes.AlphaTestInstructionsRoute> {
