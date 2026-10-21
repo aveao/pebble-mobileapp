@@ -52,6 +52,28 @@ class IntegrationProviderRepository(
 
     fun findProvider(id: String): IntegrationProvider? = allProviders().firstOrNull { it.id == id }
 
+    /** The provider named [destination], or the selected one when null. Null for an unknown name. */
+    fun destinationProvider(destination: String?, support: IntegrationSupport): IntegrationProvider? =
+        if (destination == null) selected(support) else findProviderByName(destination, support)
+
+    /** The provider for [support] the user would call [name], ignoring case and spacing. */
+    fun findProviderByName(name: String, support: IntegrationSupport): IntegrationProvider? {
+        val wanted = normalizeProviderName(name)
+        return providers(support).firstOrNull {
+            normalizeProviderName(it.titleFor(support)) == wanted || normalizeProviderName(it.title) == wanted
+        }
+    }
+
+    /**
+     * Connected providers for [support], other than the selected one, that [text] names.
+     */
+    suspend fun mentionedProviders(text: String, support: IntegrationSupport): List<IntegrationProvider> {
+        val selected = selected(support)
+        return providers(support)
+            .filter { it != selected && text.mentionsProviderName(it.titleFor(support)) }
+            .filter { it.isAuthorized(support) }
+    }
+
     fun selectNoteProvider(provider: IntegrationProvider) {
         require(provider.supportsNotes) { "${provider.id} does not support notes" }
         preferences.setNoteProviderId(provider.id)
@@ -96,6 +118,11 @@ class IntegrationProviderRepository(
 
     private fun resolve(id: String, support: IntegrationSupport): IntegrationProvider =
         findProvider(id)?.takeIf { support in it.supports } ?: defaultProvider
+
+    private fun selected(support: IntegrationSupport): IntegrationProvider = when (support) {
+        IntegrationSupport.Note -> selectedNoteProvider.value
+        IntegrationSupport.Reminder -> selectedReminderProvider.value
+    }
 
     companion object {
         private val logger = Logger.withTag("IntegrationProviderRepository")

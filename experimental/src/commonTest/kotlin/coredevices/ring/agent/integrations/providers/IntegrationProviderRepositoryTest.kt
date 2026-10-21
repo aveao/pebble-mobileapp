@@ -66,8 +66,8 @@ private class FakeProvider(
     override val platforms: Set<SupportedPlatform> = SupportedPlatform.entries.toSet(),
     override val storesItemsLocally: Boolean = false,
     var authorized: Boolean = true,
+    override val title: String = id,
 ) : IntegrationProvider {
-    override val title = id
     val notes = FakeNoteIntegration()
     val reminders = FakeReminderIntegration()
     override suspend fun isAuthorized() = authorized
@@ -106,7 +106,11 @@ class IntegrationProviderRepositoryTest {
         storesItemsLocally = true,
     )
     private val notion = FakeProvider(id = "notion", supports = setOf(IntegrationSupport.Note))
-    private val googleTasks = FakeProvider(id = "google_tasks", supports = setOf(IntegrationSupport.Reminder))
+    private val googleTasks = FakeProvider(
+        id = "google_tasks",
+        supports = setOf(IntegrationSupport.Reminder),
+        title = "Google Tasks",
+    )
     private val tasker = FakeProvider(
         id = "tasker",
         supports = setOf(IntegrationSupport.Note, IntegrationSupport.Reminder),
@@ -255,12 +259,48 @@ class IntegrationProviderRepositoryTest {
     }
 
     @Test
+    fun providersAreFoundByNameForTheKindTheySupport() {
+        val repository = repository()
+
+        assertSame(googleTasks, repository.findProviderByName("google tasks", IntegrationSupport.Reminder))
+        assertSame(googleTasks, repository.findProviderByName("GoogleTasks", IntegrationSupport.Reminder))
+        assertNull(repository.findProviderByName("Google Tasks", IntegrationSupport.Note))
+        assertNull(repository.findProviderByName("TickTick", IntegrationSupport.Reminder))
+    }
+
+    @Test
+    fun destinationFallsBackToTheSelectionOnlyWhenUnnamed() {
+        val repository = repository()
+        repository.selectNoteProvider(notion)
+
+        assertSame(notion, repository.destinationProvider(null, IntegrationSupport.Note))
+        assertSame(index, repository.destinationProvider(null, IntegrationSupport.Reminder))
+        assertSame(googleTasks, repository.destinationProvider("google tasks", IntegrationSupport.Reminder))
+        assertNull(repository.destinationProvider("TickTick", IntegrationSupport.Reminder))
+    }
+
+    @Test
+    fun mentionedProvidersAreTheConnectedOnesNamedInTheTextOtherThanTheSelection() = runTest {
+        val repository = repository()
+        val text = "set a reminder on google tasks and tasker to buy milk"
+
+        assertEquals(listOf(googleTasks, tasker), repository.mentionedProviders(text, IntegrationSupport.Reminder))
+
+        tasker.authorized = false
+        assertEquals(listOf(googleTasks), repository.mentionedProviders(text, IntegrationSupport.Reminder))
+
+        repository.selectReminderProvider(googleTasks)
+        assertEquals(emptyList(), repository.mentionedProviders(text, IntegrationSupport.Reminder))
+        assertEquals(emptyList(), repository.mentionedProviders("remind me to buy milk", IntegrationSupport.Reminder))
+    }
+
+    @Test
     fun shortcutTitlesComeFromTheProvider() {
         val repository = repository()
 
         assertNull(repository.shortcutDestinationTitle(NoteShortcutType.SendToMe))
         assertEquals("notion", repository.shortcutDestinationTitle(NoteShortcutType.SendToNoteProvider("notion")))
-        assertEquals("google_tasks", repository.shortcutDestinationTitle(NoteShortcutType.SendToReminderProvider("google_tasks")))
+        assertEquals("Google Tasks", repository.shortcutDestinationTitle(NoteShortcutType.SendToReminderProvider("google_tasks")))
         assertEquals("Unavailable provider", repository.shortcutDestinationTitle(NoteShortcutType.SendToNoteProvider("plugin:gone")))
     }
 }

@@ -50,6 +50,11 @@ interface IntegrationProvider {
 val IntegrationProvider.supportsNotes: Boolean get() = IntegrationSupport.Note in supports
 val IntegrationProvider.supportsReminders: Boolean get() = IntegrationSupport.Reminder in supports
 
+fun IntegrationProvider.titleFor(support: IntegrationSupport): String = when (support) {
+    IntegrationSupport.Note -> notesTitle
+    IntegrationSupport.Reminder -> remindersTitle
+}
+
 /** Where an action's result was sent, for display; null when the item is stored locally. */
 val IntegrationProvider.externalDestination: String? get() = title.takeUnless { storesItemsLocally }
 
