@@ -22,6 +22,7 @@ import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.MusicNote
+import androidx.compose.material.icons.filled.PhonelinkRing
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Public
 import androidx.compose.material.icons.filled.Router
@@ -174,6 +175,7 @@ private fun permissionIcon(key: String, defined: Map<String, PluginDefinedPermis
     PluginPermissions.READ_WATCH_SETTINGS, PluginPermissions.WRITE_WATCH_SETTINGS -> Icons.Filled.Watch
     PluginPermissions.READ_MUSIC, PluginPermissions.CONTROL_MUSIC -> Icons.Filled.MusicNote
     PluginPermissions.LAUNCH_APPS -> Icons.Filled.Apps
+    PluginPermissions.FIND_MY_PHONE -> Icons.Filled.PhonelinkRing
     PluginPermissions.READ_FILES, PluginPermissions.WRITE_FILES -> Icons.Filled.Folder
     PluginPermissions.LEGACY_PEBBLEKIT -> Icons.Filled.Campaign
     PluginPermissions.PEBBLEKIT_2 -> Icons.Filled.SwapHoriz
@@ -195,6 +197,7 @@ fun permissionLabel(key: String, defined: Map<String, PluginDefinedPermission>):
     PluginPermissions.READ_MUSIC -> "See what music is playing"
     PluginPermissions.CONTROL_MUSIC -> "Control music playback"
     PluginPermissions.LAUNCH_APPS -> "Launch apps on your watch"
+    PluginPermissions.FIND_MY_PHONE -> "Ring your phone to find it"
     PluginPermissions.READ_FILES -> fileScopeOf(key)?.let { "Read '${fileScopeLabel(it)}' in device storage" } ?: "Read files from device storage you permit"
     PluginPermissions.WRITE_FILES -> fileScopeOf(key)?.let { "Read & write to '${fileScopeLabel(it)}' in device storage" } ?: "Read & write to files in device storage you permit"
     PluginPermissions.LEGACY_PEBBLEKIT -> "Broadcast messages to every app on your phone (legacy PebbleKit)"

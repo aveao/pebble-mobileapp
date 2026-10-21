@@ -129,6 +129,7 @@ import io.rebble.libpebblecommon.packets.ProtocolCapsFlag
 import io.rebble.libpebblecommon.plugin.BundledAppInstaller
 import io.rebble.libpebblecommon.plugin.JsPluginFactory
 import io.rebble.libpebblecommon.plugin.CalendarPlugin
+import io.rebble.libpebblecommon.plugin.FindMyPhonePlugin
 import io.rebble.libpebblecommon.plugin.PhoneStatePlugin
 import io.rebble.libpebblecommon.permissions.AppPermissions
 import io.rebble.libpebblecommon.permissions.RunningApps
@@ -469,12 +470,14 @@ fun initKoin(
                 singleOf(::CalendarPlugin)
                 singleOf(::WatchSettingsPlugin)
                 singleOf(::WatchStatePlugin)
+                singleOf(::FindMyPhonePlugin)
                 single<Set<NativePlugin>> {
                     setOf(
                         get<PhoneStatePlugin>(),
                         get<CalendarPlugin>(),
                         get<WatchSettingsPlugin>(),
                         get<WatchStatePlugin>(),
+                        get<FindMyPhonePlugin>(),
                     ) + get<PlatformPlugins>().plugins
                 }
                 singleOf(::PluginRegistry)

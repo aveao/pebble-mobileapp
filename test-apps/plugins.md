@@ -164,7 +164,7 @@ Declare what your app and its plugin need once, in the `pebble` block of `packag
 
 The built-in permissions are `Internet`, `LocalNetwork`, `Location`, `Notifications`, `Calendar`,
 `Contacts`, `Timeline`, `ReadWatchSettings`/`WriteWatchSettings`, `ReadMusic`/`ControlMusic`,
-`LaunchApps`, `ReadFiles`/`WriteFiles`, `LegacyPebbleKit` and `Health`.
+`LaunchApps`, `FindMyPhone`, `ReadFiles`/`WriteFiles`, `LegacyPebbleKit` and `Health`.
 
 - Each `Internet` domain is its own permission and covers its subdomains. `LocalNetwork` covers
   devices on the LAN.
