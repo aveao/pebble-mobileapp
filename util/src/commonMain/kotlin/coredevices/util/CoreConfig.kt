@@ -100,6 +100,8 @@ data class CoreConfig(
     /** Stops the ring scan/sync loop, for when another profile's app instance owns the ring. */
     val disableRingBluetoothSync: Boolean = false,
     val notifyWatchFullyCharged: Boolean = true,
+    /** Set the day/night backlight switch times from the local sunrise/sunset during weather sync. */
+    val backlightColorAutoSunriseSunset: Boolean = true,
 )
 
 @Serializable
