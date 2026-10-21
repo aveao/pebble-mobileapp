@@ -622,37 +622,20 @@ class IndexNotificationManager(
                 when (it) {
                     is RingEvent.FirmwareUpdate.Started -> {
                         val notifId = nextNotificationId()
-                        val notif = GenericNotification(
-                            id = notifId,
-                            title = "Updating Index 01 Firmware",
-                            contentText = "Updating to version ${it.newVersion}",
-                            inProgress = NotificationProgress.Indeterminate,
-                            localOnly = false
-                        )
-                        inProgressUpdate = notif
-                        platformIndexNotificationManager.notify(notif)
+                        if (it.isFailsafe) {
+                            val notif = GenericNotification(
+                                id = notifId,
+                                title = "Recovering your Index 01",
+                                contentText = "Your Index 01 ran into a problem and needs to be restored.",
+                                inProgress = NotificationProgress.Indeterminate,
+                                localOnly = true
+                            )
+                            inProgressUpdate = notif
+                            platformIndexNotificationManager.notify(notif)
+                        }
                     }
-                    is RingEvent.FirmwareUpdate.Success -> {
-                        val notif = GenericNotification(
-                            id = inProgressUpdate?.id ?: nextNotificationId(),
-                            title = "Index 01 Firmware Updated",
-                            contentText = "Successfully updated to version ${it.newVersion}",
-                            inProgress = null,
-                            localOnly = false
-                        )
-                        platformIndexNotificationManager.notify(notif)
-                        inProgressUpdate = null
-                    }
-                    is RingEvent.FirmwareUpdate.Failed -> {
-                        val notif = GenericNotification(
-                            id = inProgressUpdate?.id ?: nextNotificationId(),
-                            title = "Firmware Update Failed",
-                            contentText = "Failed to update Index 01 to version ${it.newVersion}",
-                            inProgress = null,
-                            localOnly = false,
-                            deepLink = "pebblecore://deep-link/bug-report?pebble=false"
-                        )
-                        platformIndexNotificationManager.notify(notif)
+                    is RingEvent.FirmwareUpdate.Success, is RingEvent.FirmwareUpdate.Failed -> {
+                        inProgressUpdate?.let { notif -> platformIndexNotificationManager.cancel(notif.id) }
                         inProgressUpdate = null
                     }
                     is RingEvent.FirmwareUpdate.NotStarted -> {
