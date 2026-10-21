@@ -85,6 +85,7 @@ import coredevices.pebble.services.AppstoreService
 import coredevices.pebble.services.PEBBLE_FEED_URL
 import coredevices.pebble.services.SettingsPageState
 import coredevices.pebble.services.isPebbleFeed
+import coredevices.pebble.services.pluginMetadata
 import coredevices.ui.ConfirmDialog
 import coredevices.ui.PebbleElevatedButton
 import io.ktor.http.URLProtocol
@@ -667,6 +668,13 @@ fun LockerAppScreen(topBarParams: TopBarParams, uuid: Uuid?, navBarNav: NavBarNa
                                 PermissionItem(permission, topBarParams)
                             }
                         }
+                    }
+                    if (pluginsEnabled) {
+                        val pluginMetadata = remember(entry, storeApp) {
+                            libPebble.getAllPlugins().firstOrNull { it.pluginUuid == entry.uuid }
+                                ?: storeApp?.pluginMetadata()
+                        }
+                        pluginMetadata?.let { PluginCapabilitiesSection(it) }
                     }
                     Spacer(Modifier.height(5.dp))
                     // Shared minimum width for the name column — grows to fit the widest label.
