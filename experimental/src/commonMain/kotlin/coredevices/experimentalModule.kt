@@ -27,7 +27,10 @@ import coredevices.ring.agent.confirmation.RealAgentUserConfirmation
 import coredevices.ring.agent.builtin_servlets.calendar.TargetCalendarSeeder
 import coredevices.ring.agent.builtin_servlets.reminders.BuiltInReminderFeedItems
 import coredevices.ring.agent.builtin_servlets.reminders.BuiltInReminderIntegration
+import coredevices.pebble.ui.IndexTabBadge
 import coredevices.ring.agent.integrations.providers.IntegrationProviderRepository
+import coredevices.ring.agent.integrations.providers.LegacyDestinations
+import coredevices.ring.agent.integrations.providers.pluginsEnabled
 import coredevices.ring.agent.builtin_servlets.reminders.createBuiltInReminderIntegration
 import coredevices.ring.agent.integrations.DelegatedIntegrationItems
 import coredevices.ring.agent.integrations.GTasksIntegration
@@ -257,7 +260,7 @@ val experimentalModule = module {
     singleOf(::EncryptionManager)
     singleOf(::RecordingPreprocessor)
     singleOf(::RingSync)
-    single { IndexNotificationManager(get(), get(), get(), get(), get(), get(), get(), get(), getOrNull()) }
+    single { IndexNotificationManager(get(), get(), get(), get(), get(), get(), get(), get(), getOrNull(), get()) }
     singleOf(::RingPairing)
     singleOf(::IndexSettingsSummary)
     singleOf(::IndexRebootLogStore)
@@ -287,6 +290,7 @@ val experimentalModule = module {
     singleOf(::BuiltInReminderFeedItems)
     singleOf(::DelegatedIntegrationItems)
     single { IntegrationProviderRepository(get(), get(), get(), get()) }
+    single { LegacyDestinations(get(), get(), get<LibPebble>().pluginsEnabled()) } bind IndexTabBadge::class
     singleOf(::ShortcutActionHandler)
     singleOf(::ShareActionHandler)
     singleOf(::RealAgentUserConfirmation) bind AgentUserConfirmation::class

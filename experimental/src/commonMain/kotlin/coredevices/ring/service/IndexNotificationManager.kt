@@ -12,7 +12,9 @@ import coredevices.libindex.database.entity.RingTransfer
 import coredevices.libindex.database.entity.RingTransferStatus
 import coredevices.libindex.database.repository.RingTransferRepository
 import coredevices.mcp.data.SemanticResult
+import coredevices.ring.agent.integrations.providers.IntegrationProvider
 import coredevices.ring.agent.integrations.providers.IntegrationProviderRepository
+import coredevices.ring.agent.integrations.providers.LegacyDestinations
 import coredevices.ring.data.IndexTimestamp
 import coredevices.ring.data.InflightIndexNotification
 import coredevices.ring.data.NoteShortcutType
@@ -60,6 +62,7 @@ import kotlinx.datetime.format.char
 import kotlinx.datetime.toLocalDateTime
 import kotlin.time.Clock
 import kotlin.time.Duration
+import kotlin.time.Duration.Companion.hours
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.DurationUnit
 import kotlin.time.Instant
@@ -96,6 +99,7 @@ sealed interface NotificationProgress {
 
 // Fixed id so repeated prompts replace the visible notification rather than stack.
 internal const val SPEECH_MODEL_PROMPT_NOTIFICATION_ID = 5
+internal const val LEGACY_DESTINATION_NOTIFICATION_ID = 6
 
 expect class PlatformIndexNotificationManager{
     fun notify(notification: GenericNotification)
@@ -112,6 +116,7 @@ class IndexNotificationManager(
     private val trace: RingTraceSession,
     private val platform: Platform,
     private val localTranscription: LocalTranscriptionService?,
+    private val legacyDestinations: LegacyDestinations,
 ) {
     companion object {
         private val logger = Logger.withTag("IndexNotificationManager")
@@ -119,6 +124,7 @@ class IndexNotificationManager(
         private val BUG_REPORT_DEBOUNCE = 1.minutes
         private val PAIRING_ISSUE_DEBOUNCE = 30.minutes
         private val SPEECH_MODEL_PROMPT_DEBOUNCE = 5.minutes
+        private val LEGACY_DESTINATION_DEBOUNCE = 24.hours
         private val ACTION_NOTIFICATION_TIMEOUT = 5.minutes
     }
     private val mapMutex = Mutex() // Guards the three mutable maps below
@@ -589,6 +595,20 @@ class IndexNotificationManager(
         }
     }
 
+    // Runs for the whole process, not just while the ring service is up: legacy destinations
+    // are also reached from shares, shortcuts and typed notes.
+    // The settings badge carries the reminder between uses, so one nag a day per provider.
+    suspend fun notifyLegacyDestinationUse() {
+        val lastPrompt = mutableMapOf<String, Instant>()
+        legacyDestinations.legacyUse.collect { provider ->
+            val now = Clock.System.now()
+            val last = lastPrompt[provider.id]
+            if (last != null && now - last < LEGACY_DESTINATION_DEBOUNCE) return@collect
+            lastPrompt[provider.id] = now
+            platformIndexNotificationManager.notify(legacyDestinationNotification(provider))
+        }
+    }
+
     // Leading-edge debounce: the ring scans continuously, so a lost pairing can be
     // reported repeatedly. Notify once, then suppress repeats for a window.
     private suspend fun processPairingIssueNotifications(events: Flow<RingEvent>) {
@@ -647,6 +667,14 @@ class IndexNotificationManager(
             }
     }
 }
+
+internal fun legacyDestinationNotification(provider: IntegrationProvider): GenericNotification = GenericNotification(
+    id = LEGACY_DESTINATION_NOTIFICATION_ID,
+    title = "${provider.title} needs relinking",
+    contentText = "The built-in ${provider.title} integration will be removed soon. " +
+        "Tap to relink it as a plugin in Index settings.",
+    deepLink = RingRoutes.SETTINGS_DEEP_LINK,
+)
 
 internal fun speechModelPromptNotification(prompt: SpeechModelPrompt): GenericNotification = when (prompt) {
     is SpeechModelPrompt.DownloadRequired -> GenericNotification(

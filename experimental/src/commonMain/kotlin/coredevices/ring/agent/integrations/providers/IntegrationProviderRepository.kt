@@ -13,7 +13,10 @@ import coredevices.util.Platform
 import coredevices.util.flow.mapState
 import coredevices.util.isAndroid
 import io.rebble.libpebblecommon.connection.Plugins
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 
 /**
  * The single place to find note/reminder providers: the built-in ones plus any installed plugin
@@ -38,6 +41,10 @@ class IntegrationProviderRepository(
 
     val selectedReminderProvider: StateFlow<IntegrationProvider> =
         preferences.reminderProviderId.mapState { resolve(it, IntegrationSupport.Reminder) }
+
+    private val _integrationUsed = MutableSharedFlow<IntegrationProvider>(extraBufferCapacity = 16)
+    /** The provider each time an integration is handed out to write through. */
+    val integrationUsed: SharedFlow<IntegrationProvider> = _integrationUsed.asSharedFlow()
 
     /** Every provider usable on this platform, connected or not. Plugins come and go, so not cached. */
     fun allProviders(): List<IntegrationProvider> =
@@ -87,6 +94,7 @@ class IntegrationProviderRepository(
     /** The integration tools write notes through, for [provider] or the selected one. */
     fun noteIntegration(provider: IntegrationProvider = selectedNoteProvider.value): NoteIntegration {
         logger.i { "Creating note integration for provider: ${provider.id}" }
+        _integrationUsed.tryEmit(provider)
         val integration = provider.notes()
         return if (provider.storesItemsLocally) {
             integration
@@ -99,6 +107,7 @@ class IntegrationProviderRepository(
         provider: IntegrationProvider = selectedReminderProvider.value,
     ): ReminderIntegration {
         logger.i { "Creating reminder integration for provider: ${provider.id}" }
+        _integrationUsed.tryEmit(provider)
         val integration = provider.reminders()
         return if (provider.storesItemsLocally) {
             integration
