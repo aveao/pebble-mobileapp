@@ -69,7 +69,7 @@ A **source** is something an app can read from a plugin, addressed in layers:
 ```
 category            home
   item              room_lights        the kind of thing
-    instance        "3"                one particular room (its name property: "Living room")
+    instance        "3"                one particular room (its name property: "Kitchen")
       property      brightness         one reading of it
         shape       numericValue -> { value: 64, unit: "%", min: 0, max: 100 }
 ```
@@ -80,6 +80,13 @@ change. Instances have a stable `instanceId`; `name` is the property to display 
 An **action** is something a plugin can do (`set_on`, `add_task`). It takes JSON arguments described
 by a JSON Schema in the manifest, and can say which sources it affects (`targets`), so a tile showing
 a light knows which actions apply to it.
+
+## Multiple instances
+
+Updates carry `instances: [...]`, one per thing (a room, a saved location), in an order that means
+something: `instances[0]` is the first ([example](#three-ways-to-use-plugins)). `supportsMultiple`
+in a manifest just tells a settings page to offer a picker. Many readings of one thing are a
+[series](#series) instead.
 
 ## Categories
 
@@ -95,7 +102,7 @@ Examples now:
 
 | Category        | Items                                                             | From      |
 | --------------- | ----------------------------------------------------------------- | --------- |
-| `weather`       | `location`, `hour`                                                | built-in  |
+| `weather`       | `location`                                                        | built-in  |
 | `calendar`      | `event`                                                           | built-in  |
 | `phone`         | `phone_state`                                                     | built-in  |
 | `music`         | `track`                                                           | built-in (Android) |
@@ -137,6 +144,30 @@ and you pick one.
   `iconPixelSize`.
 
 A missing property or shape means the plugin can't serve it right now. Check before drawing.
+
+### Series
+
+A property can also be a **series**: many readings of one thing along an axis, like the
+temperature for each hour ahead. Its value is a `series` wrapping the shapes it can be drawn as,
+each with `values` in place of its single reading:
+
+```js
+hourly_temperature: {
+  series: {
+    start: 1729468800,   // epoch seconds UTC of values[0] (optional, with stepSec)
+    stepSec: 3600,
+    numericValue: { values: [14, 15, null, 16], unit: "°C" },   // unit, min, max are shared
+    shortText:    { values: ["14°C", "15°C", null, "16°C"] },
+  },
+},
+```
+
+- Every `values` array is the same length, and `null` is a missing point. `icon` and `image`
+  series carry one bitmap per point.
+- Use `start` and `stepSec` to find *now* in the series, rather than assuming `values[0]` is.
+- A series is declared as `series.<shape>`, e.g. `"hourly_temperature": ["series.numericValue",
+  "series.shortText"]`.
+- The built-in weather plugin offers `hourly_*` and `daily_*` series on `weather/location`.
 
 Shapes are designed so you can build for a *slot in your design* rather than for specific data. A
 face with a gauge widget can offer the user anything that has a `numericValue` with a range: battery,
@@ -264,10 +295,11 @@ const subscription = Pebble.subscribeToSource({
   properties: ["name", "temperature", "condition"],  // optional hint; omit for everything
   iconPixelSize: { w: 48, h: 48 },                   // optional; ask only if you want bitmaps
   onData: ({ instances }) => {
-    const here = instances[0];                       // first saved location (can be multiple if supportsMultiple==true)
+    // the location picked on your settings page, else the user's first
+    const here = instances.find((i) => i.instanceId === savedId) ?? instances[0];
     if (!here) return;
     const p = here.properties;
-    send(p.name.shortText.text, p.temperature.shortText.text);
+    send(p.name?.shortText?.text, p.temperature?.shortText?.text ?? "--");   // any property can be missing
   },
   onError: (err) => console.log(err.code, err.message),
 });
@@ -281,14 +313,22 @@ Every update is an envelope:
 {
   pluginUuid: "...",
   validUntilMs: 1716940000000,
-  instances: [
+  instances: [                                   // one per room
     {
-      instanceId: "3",
+      instanceId: "3",                           // stable: store this to remember a choice
       properties: {
         name:       { shortText: { text: "Kitchen" } },
+        on:         { boolean: { value: true }, shortText: { text: "On" } },
         brightness: { numericValue: { value: 64, unit: "%", min: 0, max: 100 },
                       shortText:    { text: "64%" } },
       },
+    },
+    {
+      instanceId: "5",
+      properties: {
+        name:       { shortText: { text: "Living room" } },
+        on:         { boolean: { value: false }, shortText: { text: "Off" } },
+      },                                         // off, so no brightness: draw what is there
     },
   ],
 }
@@ -314,7 +354,8 @@ const result = await Pebble.invokeAction({
 its sources (items, properties and shapes) and actions.
 
 Error codes: `PLUGIN_UNAVAILABLE`, `PERMISSION_DENIED`, `RATE_LIMITED`, `TIMEOUT`,
-`INVALID_REQUEST`, `UNKNOWN`, plus `AUTH_REQUIRED` and `INVALID_ARGS` for actions.
+`INVALID_REQUEST`, `UNKNOWN`, plus `AUTH_REQUIRED` and `INVALID_ARGS` for actions. An error doesn't
+end a subscription: it carries on, and the next update may succeed.
 
 # Writing a plugin
 
@@ -400,8 +441,11 @@ Pebble.registerSourceHandler(async (request, respond) => {
 
 Pebble.registerActionHandler(async (request, respond) => {
   // request: { action, args }
+  if (request.action !== "add_stock") return respond.error("INVALID_REQUEST");
   try {
     await addStock(request.args.symbol);
+    // Sources this changed: subscriptions to them (the caller's included) are re-read now, so
+    // they get the new data without waiting for the next refresh.
     respond.ok({ text: "Added.", refreshed: ["finance/stock"] });
   } catch (e) {
     respond.error("UNKNOWN", e.message);

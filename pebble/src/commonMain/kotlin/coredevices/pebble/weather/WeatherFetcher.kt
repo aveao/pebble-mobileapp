@@ -408,7 +408,7 @@ private val TomorrowDayUuid = Uuid.parse("2834d0c8-85bc-45bd-b2b7-d0f026098d28")
 private val TomorrowNightUuid = Uuid.parse("2f363ad4-bc5d-455a-a445-4e00ec07417e")
 private val DayAfterTomorrowDayUuid = Uuid.parse("3233984e-2dc9-4469-8a9a-46f91d81b7fc")
 private val DayAfterTomorrowNightUuid = Uuid.parse("fd97c081-9970-436b-aa87-9c55232bce35")
-private const val TEMP_NO_VALUE = Short.MAX_VALUE
+internal const val TEMP_NO_VALUE = Short.MAX_VALUE
 private const val HOURS_PER_DAY = 24
 
 internal fun HourlyForecast.toHourlyForecast() = WeatherHourlyForecast(
