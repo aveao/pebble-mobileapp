@@ -289,6 +289,13 @@ fun LockerScreen(
                 sideload(it)
             }
         }
+        val pendingLockerTab by deepLinks.pendingLockerTab.collectAsState()
+        LaunchedEffect(pendingLockerTab) {
+            pendingLockerTab?.let {
+                deepLinks.consumePendingLockerTab()
+                viewModel.type.value = it
+            }
+        }
         val launchInstallAppDialog = rememberOpenDocumentLauncher {
             it?.firstOrNull()?.let { file ->
                 val tempAppPath = getTempFilePath(appContext, "temp.pbw")

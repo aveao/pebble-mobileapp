@@ -12,6 +12,7 @@ import coredevices.ring.external.indexwebhook.IndexWebhookSheet
 import coredevices.ring.ui.navigation.RingRoutes
 import coredevices.ring.ui.viewmodel.IndexActionsViewModel
 import coredevices.ring.ui.viewmodel.RingButtonViewModel
+import io.rebble.libpebblecommon.locker.AppType
 import org.koin.compose.viewmodel.koinViewModel
 
 /**
@@ -50,6 +51,7 @@ fun IndexWebhookSheetHost() {
 fun IndexAgentActionsSection(
     coreNav: CoreNav,
     showHeader: Boolean = true,
+    canBrowsePlugins: Boolean = true,
     viewModel: IndexActionsViewModel = koinViewModel(),
 ) {
     val agentReachable by viewModel.agentReachable.collectAsState()
@@ -67,6 +69,7 @@ fun IndexAgentActionsSection(
     val availableReminderProviders by viewModel.availableReminderProviders.collectAsState()
     val configurablePlugins by viewModel.configurablePlugins.collectAsState()
     val storePlugins by viewModel.storePlugins.collectAsState()
+    val pluginsEnabled by viewModel.pluginsEnabled.collectAsState()
     val showContactsDialog by viewModel.showContactsDialog.collectAsState()
 
     LaunchedEffect(Unit) { viewModel.refreshAvailableProviders() }
@@ -90,6 +93,7 @@ fun IndexAgentActionsSection(
         availableReminderProviders = availableReminderProviders,
         configurablePlugins = configurablePlugins,
         storePlugins = storePlugins,
+        pluginsEnabled = pluginsEnabled,
         onSetActionEnabled = viewModel::setActionEnabled,
         onSetPluginGrantEnabled = viewModel::setPluginGrantEnabled,
         onSetHttpServerEnabled = viewModel::setHttpServerEnabled,
@@ -109,6 +113,8 @@ fun IndexAgentActionsSection(
         onOpenPluginPage = { uuid -> coreNav.navigateTo(CommonRoutes.LockerAppRoute(uuid = uuid.toString())) },
         onOpenBeeperContacts = viewModel::showContactsDialog,
         onGetMoreActions = {},
+        onGetMorePlugins = { coreNav.navigateTo(CommonRoutes.LockerTabRoute(AppType.Plugin)) }
+            .takeIf { canBrowsePlugins },
         onProvidersChanged = viewModel::refreshAvailableProviders,
     )
 }

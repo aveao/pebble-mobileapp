@@ -309,7 +309,7 @@ internal fun SetupStep(
             title = "Index Agent",
             sub = "Pick which actions Index can take, and where notes and reminders are saved."
         ) {
-            IndexAgentActionsSection(coreNav, showHeader = false)
+            IndexAgentActionsSection(coreNav, showHeader = false, canBrowsePlugins = false)
         }
 
         // 4 — Secondary action

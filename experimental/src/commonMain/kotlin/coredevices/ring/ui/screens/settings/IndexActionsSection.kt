@@ -48,6 +48,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.ToggleButton
@@ -290,6 +291,7 @@ internal fun IndexActionsSection(
     availableReminderProviders: List<IntegrationProvider>,
     configurablePlugins: Set<Uuid>,
     storePlugins: List<StorePlugin>,
+    pluginsEnabled: Boolean,
     onSetActionEnabled: (name: String, enabled: Boolean) -> Unit,
     onSetPluginGrantEnabled: (uuid: Uuid, grant: PluginGrant, enabled: Boolean) -> Unit,
     onSetHttpServerEnabled: (server: HttpMcpServerEntity, enabled: Boolean) -> Unit,
@@ -307,6 +309,8 @@ internal fun IndexActionsSection(
     onOpenPluginPage: (uuid: Uuid) -> Unit,
     onOpenBeeperContacts: () -> Unit,
     onGetMoreActions: () -> Unit,
+    /** Null where the user can't browse plugins yet, e.g. onboarding; a hint is shown instead. */
+    onGetMorePlugins: (() -> Unit)?,
     onProvidersChanged: () -> Unit,
     showHeader: Boolean = true,
 ) {
@@ -430,6 +434,23 @@ internal fun IndexActionsSection(
         HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp))
         // The Actions store is future expansion and ships disabled.
         // GetMoreActionsRow(onClick = onGetMoreActions)
+        if (pluginsEnabled && onGetMorePlugins != null) {
+            SectionActionRow(
+                icon = Icons.Default.Power,
+                title = "Add plugin integration",
+                subtitle = "Browse plugins in the store",
+                enabled = true,
+                onClick = onGetMorePlugins,
+            )
+        } else if (pluginsEnabled) {
+            SectionActionRow(
+                icon = Icons.Default.Power,
+                title = "Add plugin integration",
+                subtitle = "You can add plugins from settings later",
+                enabled = false,
+                onClick = {},
+            )
+        }
         SectionActionRow(
             icon = Icons.Default.Dns,
             title = "Add MCP server",
@@ -461,6 +482,8 @@ internal fun IndexActionsSection(
             title = "Where notes save",
             options = noteDestOptions(noteDestinationProviders, availableNoteProviders, configurablePlugins),
             storePlugins = storeDestOptions(storePlugins, IntegrationSupport.Note),
+            pluginsEnabled = pluginsEnabled,
+            onGetMore = onGetMorePlugins,
             selected = noteProvider,
             onSelect = onSelectNoteProvider,
             onConnect = { provider ->
@@ -487,6 +510,8 @@ internal fun IndexActionsSection(
             title = "Where reminders save",
             options = reminderDestOptions(reminderDestinationProviders, availableReminderProviders, configurablePlugins),
             storePlugins = storeDestOptions(storePlugins, IntegrationSupport.Reminder),
+            pluginsEnabled = pluginsEnabled,
+            onGetMore = onGetMorePlugins,
             selected = reminderProvider,
             onSelect = onSelectReminderProvider,
             onConnect = { provider ->
@@ -1109,6 +1134,8 @@ private fun DestinationSheet(
     title: String,
     options: List<DestOption>,
     storePlugins: List<StorePlugin>,
+    pluginsEnabled: Boolean,
+    onGetMore: (() -> Unit)?,
     selected: IntegrationProvider,
     onSelect: (IntegrationProvider) -> Unit,
     onConnect: (IntegrationProvider) -> Unit,
@@ -1117,8 +1144,12 @@ private fun DestinationSheet(
     onConfigure: (IntegrationProvider) -> Unit = {},
 ) {
     val colors = IndexTheme.colors
-    ModalBottomSheet(onDismissRequest = onDismiss, containerColor = colors.sheetSurface) {
-        Column(modifier = Modifier.padding(bottom = 28.dp)) {
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+        containerColor = colors.sheetSurface,
+    ) {
+        Column {
             Row(
                 modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 10.dp),
                 verticalAlignment = Alignment.CenterVertically,
@@ -1183,8 +1214,35 @@ private fun DestinationSheet(
                     trailing = { TextButton(onClick = install) { Text("Connect") } },
                 )
             }
+            if (pluginsEnabled && onGetMore != null) {
+                TextButton(
+                    onClick = {
+                        onDismiss()
+                        onGetMore()
+                    },
+                    modifier = Modifier.align(Alignment.CenterHorizontally),
+                ) {
+                    Text("Get more")
+                }
+            } else if (pluginsEnabled) {
+                AddMoreLaterHint(
+                    modifier = Modifier
+                        .align(Alignment.CenterHorizontally)
+                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                )
+            }
         }
     }
+}
+
+@Composable
+private fun AddMoreLaterHint(modifier: Modifier = Modifier) {
+    Text(
+        "You can add more from Settings later",
+        fontSize = 13.sp,
+        color = IndexTheme.colors.onSurfaceVariant,
+        modifier = modifier,
+    )
 }
 
 @Composable

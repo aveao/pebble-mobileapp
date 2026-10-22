@@ -1,4 +1,5 @@
 import androidx.compose.runtime.Stable
+import io.rebble.libpebblecommon.locker.AppType
 import kotlinx.serialization.Serializable
 
 /**
@@ -55,6 +56,9 @@ object CommonRoutes {
 
     @Serializable
     data class LockerAppRoute(val uuid: String) : CoreRoute
+
+    @Serializable
+    data class LockerTabRoute(val initialTab: AppType) : CoreRoute
 
     @Serializable
     data object RingOnboardingRoute : CoreRoute

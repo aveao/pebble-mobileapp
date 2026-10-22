@@ -56,7 +56,7 @@ class IndexActionsViewModel(
     private val preferences: Preferences,
     gestureRouting: GestureRoutingPreferences,
     platform: Platform,
-    private val pluginsEnabled: StateFlow<Boolean>,
+    val pluginsEnabled: StateFlow<Boolean>,
     lockerUuids: Flow<List<Uuid>>,
     private val lockerApp: (Uuid) -> Flow<LockerWrapper?>,
 ) : ViewModel() {

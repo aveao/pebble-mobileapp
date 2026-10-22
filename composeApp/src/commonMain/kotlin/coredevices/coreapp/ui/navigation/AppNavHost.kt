@@ -94,6 +94,10 @@ fun AppNavHost(navController: NavHostController, startDestination: Any) {
                     pebbleDeepLinks.navigateToTab(route.toNavBarRoute())
                     return
                 }
+                if (route is CommonRoutes.LockerTabRoute) {
+                    pebbleDeepLinks.navigateToLockerTab(route.initialTab)
+                    return
+                }
                 if (route == PebbleRoutes.WatchHomeRoute) {
                     navController.popBackStack(CommonRoutes.OnboardingRoute, true)
                 }
