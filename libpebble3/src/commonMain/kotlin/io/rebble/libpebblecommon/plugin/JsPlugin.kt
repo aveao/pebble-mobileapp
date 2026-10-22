@@ -71,6 +71,7 @@ class JsPlugin(
     override val description: String = manifest.description
     override val sources: List<SourceDeclaration> = manifest.sources
     override val actions: List<ActionDeclaration> = manifest.actions
+    override val scriptPath: String = manifest.script
 
     private val logger = Logger.withTag("JsPlugin-$name")
     private val lenientJson = Json { ignoreUnknownKeys = true }

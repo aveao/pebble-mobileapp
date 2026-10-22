@@ -227,6 +227,7 @@ class FakeLibPebble : LibPebble {
 
     override suspend fun removeApp(id: Uuid): Boolean = true
     override suspend fun reviewSideload(pbwPath: Path): InstallReview? = null
+    override suspend fun getAppFile(uuid: Uuid, name: String): String? = null
 
     override suspend fun reviewInstall(appUuid: Uuid, appName: String, requested: RequestedPermissions): InstallReview? = null
 

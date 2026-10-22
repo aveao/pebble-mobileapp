@@ -27,8 +27,12 @@ interface Plugin {
     val actions: List<ActionDeclaration>
         get() = emptyList()
 
+    /** Path of the plugin's script inside its pbw; null for built-in plugins. */
+    val scriptPath: String?
+        get() = null
+
     val metadata: PluginMetadata
-        get() = PluginMetadata(pluginUuid, name, description, sources, actions)
+        get() = PluginMetadata(pluginUuid, name, description, sources, actions, scriptPath)
 
     /**
      * Observe one kind of thing. The returned flow emits whenever the underlying data changes;
@@ -67,6 +71,7 @@ data class PluginMetadata(
     val description: String,
     val sources: List<SourceDeclaration>,
     val actions: List<ActionDeclaration>,
+    val scriptPath: String? = null,
 ) {
     fun serves(category: String, item: String) = sources.any { it.serves(category, item) }
 

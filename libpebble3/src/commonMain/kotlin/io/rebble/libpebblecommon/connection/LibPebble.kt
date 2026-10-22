@@ -397,6 +397,8 @@ interface LockerApi {
      * none, so callers fall back to the PKJS `showConfiguration` flow.
      */
     suspend fun appConfigPageUrl(uuid: Uuid): String?
+    /** A text file from an installed app's pbw, or null if the app or file is missing. */
+    suspend fun getAppFile(uuid: Uuid, name: String): String?
     suspend fun setAppOrder(id: Uuid, order: Int)
     suspend fun waitUntilAppSyncedToWatch(id: Uuid, identifier: PebbleIdentifier, timeout: Duration): Boolean
     suspend fun removeApp(id: Uuid): Boolean

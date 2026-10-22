@@ -28,6 +28,7 @@ import coredevices.pebble.services.AppstoreSourceInitializer
 import coredevices.pebble.services.EngDashOta
 import coredevices.pebble.services.HybridTranscription
 import coredevices.pebble.services.LanguagePackRepository
+import coredevices.pebble.services.PluginSourceLoader
 import coredevices.pebble.services.Memfault
 import coredevices.pebble.services.AnalyticsHeartbeatQueue
 import coredevices.pebble.services.AnalyticsIngest
@@ -215,6 +216,7 @@ val watchModule = module {
     singleOf(::WeatherPlugin)
     singleOf(::ConfigPageSessions)
     singleOf(::LanguagePackRepository)
+    singleOf(::PluginSourceLoader)
     factoryOf(::NativeLockerAddUtil)
     singleOf(::PermissionRequestNotifier)
     singleOf(::WatchOnboardingFinished)
