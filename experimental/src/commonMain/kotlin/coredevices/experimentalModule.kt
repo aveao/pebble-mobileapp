@@ -43,6 +43,7 @@ import coredevices.ring.database.PreferencesImpl
 import coredevices.ring.database.room.Migrate33To34
 import coredevices.ring.database.room.Migrate36To37
 import coredevices.ring.database.room.RingDatabase
+import coredevices.ring.database.room.SeedDefaultPluginGrants
 import coredevices.ring.database.room.repository.McpServerRepository
 import coredevices.ring.database.room.repository.PluginGrantRepository
 import coredevices.ring.database.room.repository.RecordingProcessingTaskRepository
@@ -130,6 +131,7 @@ val experimentalModule = module {
                 Migrate33To34(isAndroid = get<Platform>().isAndroid),
                 Migrate36To37(isAndroid = get<Platform>().isAndroid),
             )
+            .addCallback(SeedDefaultPluginGrants)
             .fallbackToDestructiveMigrationOnDowngrade(true)
             .setDriver(BundledSQLiteDriver())
             .setQueryCoroutineContext(Dispatchers.IO)
