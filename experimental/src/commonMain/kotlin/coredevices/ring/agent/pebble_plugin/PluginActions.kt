@@ -2,6 +2,8 @@ package coredevices.ring.agent.pebble_plugin
 
 import io.rebble.libpebblecommon.plugin.ActionDeclaration
 import io.rebble.libpebblecommon.plugin.PluginMetadata
+import io.rebble.libpebblecommon.plugin.WatchSettingsPlugin
+import io.rebble.libpebblecommon.plugin.WatchStatePlugin
 import kotlin.uuid.Uuid
 
 /**
@@ -28,8 +30,20 @@ fun PluginMetadata.offers(grant: PluginGrant): Boolean = when (grant) {
     PluginGrant.Sources -> sources.isNotEmpty()
 }
 
+/** Built-in plugins that only do anything once a watch is paired. */
+private val WATCH_PLUGIN_UUIDS: Set<Uuid> = setOf(
+    WatchSettingsPlugin.BUILT_IN_WATCH_SETTINGS_UUID,
+    WatchStatePlugin.BUILT_IN_WATCH_STATE_UUID,
+)
+
+fun PluginMetadata.needsWatch(): Boolean = pluginUuid in WATCH_PLUGIN_UUIDS
+
 /** Plugins with something for the agent, in either form. */
 fun List<PluginMetadata>.forAgent(): List<PluginMetadata> = filter { plugin -> PluginGrant.entries.any { plugin.offers(it) } }
+
+/** Drops the watch-bound plugins while no watch is paired. */
+fun List<PluginMetadata>.forWatchPaired(watchPaired: Boolean): List<PluginMetadata> =
+    if (watchPaired) this else filterNot { it.needsWatch() }
 
 fun List<PluginMetadata>.withGrant(grant: PluginGrant, disabled: Set<Uuid>): List<PluginMetadata> =
     filter { it.offers(grant) && it.pluginUuid !in disabled }

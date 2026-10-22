@@ -207,6 +207,7 @@ class IndexActionsViewModelTest {
                 installedPlugins = { emptyList() },
                 disabledPlugins = { flowOf(emptySet<Uuid>()) },
                 persistPluginGrantEnabled = { _, _, _ -> },
+                watchPaired = flowOf(true),
             ),
             mcpServerRepository = McpServerRepository(
                 FakeDisabledBuiltinDao(),

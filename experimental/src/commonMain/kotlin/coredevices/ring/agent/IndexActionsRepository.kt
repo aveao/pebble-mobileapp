@@ -8,6 +8,7 @@ import coredevices.ring.agent.pebble_plugin.PluginGrant
 import coredevices.ring.agent.pebble_plugin.agentActions
 import coredevices.ring.agent.pebble_plugin.agentSources
 import coredevices.ring.agent.pebble_plugin.forAgent
+import coredevices.ring.agent.pebble_plugin.forWatchPaired
 import coredevices.ring.agent.pebble_plugin.offers
 import io.rebble.libpebblecommon.plugin.PluginMetadata
 import kotlinx.coroutines.flow.Flow
@@ -69,6 +70,7 @@ class IndexActionsRepository(
     private val installedPlugins: () -> List<PluginMetadata>,
     private val disabledPlugins: (PluginGrant) -> Flow<Set<Uuid>>,
     private val persistPluginGrantEnabled: suspend (pluginUuid: Uuid, grant: PluginGrant, enabled: Boolean) -> Unit,
+    private val watchPaired: Flow<Boolean>,
 ) {
     // Plugins register without a flow to observe, so callers poke this when they may have changed.
     private val pluginsVersion = MutableStateFlow(0)
@@ -78,9 +80,10 @@ class IndexActionsRepository(
             disabledPlugins(PluginGrant.Actions),
             disabledPlugins(PluginGrant.Sources),
             localAgentOnly,
+            watchPaired,
             pluginsVersion,
-        ) { disabledActions, disabledSources, localOnly, _ ->
-            installedPlugins().forAgent().map {
+        ) { disabledActions, disabledSources, localOnly, paired, _ ->
+            installedPlugins().forAgent().forWatchPaired(paired).map {
                 IndexPlugin(
                     pluginUuid = it.pluginUuid,
                     title = it.name,

@@ -2,6 +2,8 @@ package coredevices.ring.agent.pebble_plugin
 
 import io.rebble.libpebblecommon.plugin.ActionDeclaration
 import io.rebble.libpebblecommon.plugin.SourceDeclaration
+import io.rebble.libpebblecommon.plugin.WatchSettingsPlugin
+import io.rebble.libpebblecommon.plugin.WatchStatePlugin
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -33,6 +35,16 @@ class PluginActionsTest {
         ),
     ).metadata
     private val empty = FakePlugin(name = "Empty").metadata
+    private val watchSettings = FakePlugin(
+        actions = listOf(ActionDeclaration(name = "set_on")),
+        name = "Watch Settings",
+        pluginUuid = WatchSettingsPlugin.BUILT_IN_WATCH_SETTINGS_UUID,
+    ).metadata
+    private val watchState = FakePlugin(
+        actions = listOf(ActionDeclaration(name = "launch_app")),
+        name = "Watch State",
+        pluginUuid = WatchStatePlugin.BUILT_IN_WATCH_STATE_UUID,
+    ).metadata
 
     @Test
     fun `destination actions are not agent actions`() {
@@ -74,5 +86,14 @@ class PluginActionsTest {
         assertEquals(listOf(music), all.withGrant(PluginGrant.Actions, disabled))
         assertEquals(emptyList(), all.withGrant(PluginGrant.Sources, disabled))
         assertEquals(listOf(weather), all.withGrant(PluginGrant.Sources, setOf(things.pluginUuid)))
+    }
+
+    @Test
+    fun `watch plugins drop out while no watch is paired`() {
+        val all = listOf(things, watchSettings, music, watchState)
+        assertTrue(watchSettings.needsWatch())
+        assertFalse(things.needsWatch())
+        assertEquals(listOf(things, music), all.forWatchPaired(watchPaired = false))
+        assertEquals(all, all.forWatchPaired(watchPaired = true))
     }
 }
