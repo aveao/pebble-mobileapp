@@ -40,7 +40,6 @@ internal val viewmodelModule = module {
             platform = get(),
             pluginsEnabled = libPebble.pluginsEnabled(),
             lockerUuids = libPebble.getAllLockerUuids(),
-            lockerApp = libPebble::getLockerApp,
         )
     }
     viewModelOf(::RingButtonViewModel)

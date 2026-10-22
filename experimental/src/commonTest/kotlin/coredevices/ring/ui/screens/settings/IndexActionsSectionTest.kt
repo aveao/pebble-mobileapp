@@ -178,7 +178,7 @@ class IndexActionsSectionTest {
     }
 
     @Test
-    fun `plugin destinations are configurable once connected and they have a config page`() {
+    fun `plugin destinations are configurable once connected and in the locker`() {
         val plugin = PblPluginIntegrationProvider.forPlugin(
             FakePlugin(
                 actions = listOf(
@@ -193,13 +193,15 @@ class IndexActionsSectionTest {
             ).metadata,
             FakePlugins(),
         )!!
-        val withPage = setOf(plugin.pluginUuid)
+        val inLocker = setOf(plugin.pluginUuid)
 
-        assertTrue(noteDestOptions(listOf(plugin), listOf(plugin), withPage).single().configurable)
-        assertTrue(reminderDestOptions(listOf(plugin), listOf(plugin), withPage).single().configurable)
+        assertTrue(noteDestOptions(listOf(plugin), listOf(plugin), inLocker).single().configurable)
+        assertTrue(reminderDestOptions(listOf(plugin), listOf(plugin), inLocker).single().configurable)
+        // A built-in plugin has no locker page to open.
         assertFalse(noteDestOptions(listOf(plugin), listOf(plugin)).single().configurable)
-        assertFalse(noteDestOptions(listOf(plugin), emptyList(), withPage).single().configurable)
-        assertFalse(reminderDestOptions(listOf(GoogleTasks), listOf(GoogleTasks), withPage).single().configurable)
+        assertFalse(reminderDestOptions(listOf(plugin), listOf(plugin)).single().configurable)
+        assertFalse(noteDestOptions(listOf(plugin), emptyList(), inLocker).single().configurable)
+        assertFalse(reminderDestOptions(listOf(GoogleTasks), listOf(GoogleTasks), inLocker).single().configurable)
     }
 
     private fun thingsPlugin(vararg kinds: IntegrationSupport) = FakePlugin(

@@ -67,7 +67,7 @@ fun IndexAgentActionsSection(
     val reminderDestinationProviders by viewModel.reminderDestinationProviders.collectAsState()
     val availableNoteProviders by viewModel.availableNoteProviders.collectAsState()
     val availableReminderProviders by viewModel.availableReminderProviders.collectAsState()
-    val configurablePlugins by viewModel.configurablePlugins.collectAsState()
+    val lockerPlugins by viewModel.lockerPlugins.collectAsState()
     val storePlugins by viewModel.storePlugins.collectAsState()
     val pluginsEnabled by viewModel.pluginsEnabled.collectAsState()
     val showContactsDialog by viewModel.showContactsDialog.collectAsState()
@@ -91,7 +91,7 @@ fun IndexAgentActionsSection(
         reminderDestinationProviders = reminderDestinationProviders,
         availableNoteProviders = availableNoteProviders,
         availableReminderProviders = availableReminderProviders,
-        configurablePlugins = configurablePlugins,
+        lockerPlugins = lockerPlugins,
         storePlugins = storePlugins,
         pluginsEnabled = pluginsEnabled,
         onSetActionEnabled = viewModel::setActionEnabled,

@@ -220,7 +220,6 @@ class IndexActionsViewModelTest {
             platform = FakePlatform("Android 15"),
             pluginsEnabled = pluginsEnabled,
             lockerUuids = lockerUuids,
-            lockerApp = { flowOf(null) },
         )
     }
 

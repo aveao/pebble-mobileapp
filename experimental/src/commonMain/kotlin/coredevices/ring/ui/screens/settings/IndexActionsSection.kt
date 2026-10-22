@@ -137,34 +137,33 @@ internal data class DestOption(
 internal fun noteDestOptions(
     providers: List<IntegrationProvider>,
     available: List<IntegrationProvider>,
-    configurablePlugins: Set<Uuid> = emptySet(),
+    lockerPlugins: Set<Uuid> = emptySet(),
 ): List<DestOption> = providers.map {
     val connected = it in available
     DestOption(
         provider = it,
         title = it.notesTitle,
         connected = connected,
-        configurable = connected &&
-            (noteConfigureDialog(it) != null || it.isConfigurablePlugin(configurablePlugins)),
+        configurable = connected && (noteConfigureDialog(it) != null || it.hasLockerPage(lockerPlugins)),
     )
 }
 
 internal fun reminderDestOptions(
     providers: List<IntegrationProvider>,
     available: List<IntegrationProvider>,
-    configurablePlugins: Set<Uuid> = emptySet(),
+    lockerPlugins: Set<Uuid> = emptySet(),
 ): List<DestOption> = providers.map {
     val connected = it in available
-    DestOption(it, it.remindersTitle, connected, connected && it.isConfigurablePlugin(configurablePlugins))
+    DestOption(it, it.remindersTitle, connected, connected && it.hasLockerPage(lockerPlugins))
 }
 
 /** Store plugins that could take this kind once installed, listed after the installed options. */
 internal fun storeDestOptions(plugins: List<StorePlugin>, support: IntegrationSupport): List<StorePlugin> =
     plugins.filter { support in it.supports }
 
-/** Plugins with a config page open their locker page from a hold, where the locker's Settings button lives. */
-internal fun IntegrationProvider.isConfigurablePlugin(configurablePlugins: Set<Uuid>): Boolean =
-    this is PblPluginIntegrationProvider && pluginUuid in configurablePlugins
+/** Locker plugins reconfigure from their locker page; built-in plugins have no page to open. */
+internal fun IntegrationProvider.hasLockerPage(lockerPlugins: Set<Uuid>): Boolean =
+    this is PblPluginIntegrationProvider && pluginUuid in lockerPlugins
 
 /** Actions that are switched off because they still need linking get a Connect button. */
 internal fun actionConnectDialog(action: IndexAction): ActionsDialog? =
@@ -289,7 +288,7 @@ internal fun IndexActionsSection(
     reminderDestinationProviders: List<IntegrationProvider>,
     availableNoteProviders: List<IntegrationProvider>,
     availableReminderProviders: List<IntegrationProvider>,
-    configurablePlugins: Set<Uuid>,
+    lockerPlugins: Set<Uuid>,
     storePlugins: List<StorePlugin>,
     pluginsEnabled: Boolean,
     onSetActionEnabled: (name: String, enabled: Boolean) -> Unit,
@@ -408,7 +407,7 @@ internal fun IndexActionsSection(
         plugins.forEach { plugin ->
             PluginRow(
                 plugin = plugin,
-                onConfigure = if (plugin.pluginUuid in configurablePlugins) {
+                onConfigure = if (plugin.pluginUuid in lockerPlugins) {
                     { onOpenPluginPage(plugin.pluginUuid) }
                 } else {
                     null
@@ -480,7 +479,7 @@ internal fun IndexActionsSection(
         ActionsSheet.NoteDestination -> DestinationSheet(
             icon = Icons.Default.EditNote,
             title = "Where notes save",
-            options = noteDestOptions(noteDestinationProviders, availableNoteProviders, configurablePlugins),
+            options = noteDestOptions(noteDestinationProviders, availableNoteProviders, lockerPlugins),
             storePlugins = storeDestOptions(storePlugins, IntegrationSupport.Note),
             pluginsEnabled = pluginsEnabled,
             onGetMore = onGetMorePlugins,
@@ -508,7 +507,7 @@ internal fun IndexActionsSection(
         ActionsSheet.ReminderDestination -> DestinationSheet(
             icon = Icons.Default.Checklist,
             title = "Where reminders save",
-            options = reminderDestOptions(reminderDestinationProviders, availableReminderProviders, configurablePlugins),
+            options = reminderDestOptions(reminderDestinationProviders, availableReminderProviders, lockerPlugins),
             storePlugins = storeDestOptions(storePlugins, IntegrationSupport.Reminder),
             pluginsEnabled = pluginsEnabled,
             onGetMore = onGetMorePlugins,
