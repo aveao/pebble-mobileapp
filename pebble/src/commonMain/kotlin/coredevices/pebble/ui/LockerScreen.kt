@@ -329,6 +329,7 @@ fun LockerScreen(
         }
         val settings: Settings = koinInject()
         val showDebugOptions = settings.showDebugOptions()
+        var pluginsHelpDismissed by remember { mutableStateOf(settings.pluginsHelpDismissed()) }
         LaunchedEffect(showDebugOptions) {
             topBarParams.actions {
                 if (showDebugOptions) {
@@ -507,6 +508,17 @@ fun LockerScreen(
                                     highlightInLocker = highlightInLocker,
                                     onClick = onClick,
                                 )
+                            }
+                            if (viewModel.type.value == AppType.Plugin && !pluginsHelpDismissed) {
+                                item(contentType = "plugins_help", key = "plugins_help") {
+                                    PluginsHelpCard(
+                                        onDismiss = {
+                                            settings.dismissPluginsHelp()
+                                            pluginsHelpDismissed = true
+                                        },
+                                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                                    )
+                                }
                             }
                             active?.let {
                                 item(
