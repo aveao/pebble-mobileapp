@@ -8,6 +8,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import coredevices.ring.external.indexwebhook.IndexWebhookConfig
 import coredevices.ring.external.indexwebhook.IndexWebhookSettingsViewModel
+import coredevices.ring.agent.pebble_plugin.PblPluginIntegrationProvider
 import coredevices.ring.external.indexwebhook.IndexWebhookSheet
 import coredevices.ring.ui.navigation.RingRoutes
 import coredevices.ring.ui.viewmodel.IndexActionsViewModel
@@ -22,11 +23,15 @@ import org.koin.compose.viewmodel.koinViewModel
  * also render [IndexWebhookSheetHost], or the webhook rows here open nothing.
  */
 @Composable
-fun RingButtonSection(viewModel: RingButtonViewModel = koinViewModel()) {
+fun RingButtonSection(coreNav: CoreNav, viewModel: RingButtonViewModel = koinViewModel()) {
     val webhookViewModel = koinViewModel<IndexWebhookSettingsViewModel>()
     val gestureRoutes by viewModel.gestureRoutes.collectAsState()
     val webhookConfigs by viewModel.webhookConfigs.collectAsState()
+    val agentProviders by viewModel.agentProviders.collectAsState()
+    val connectedAgentProviders by viewModel.connectedAgentProviders.collectAsState()
+    val agentPlugins = agentProviders.map { AgentPluginOption(it, connected = it in connectedAgentProviders) }
 
+    LaunchedEffect(Unit) { viewModel.refreshAgentDestinations() }
     ButtonSwitchboard(
         routes = gestureRoutes,
         musicEnabled = viewModel.musicEnabled,
@@ -34,6 +39,12 @@ fun RingButtonSection(viewModel: RingButtonViewModel = koinViewModel()) {
         onSetRoute = viewModel::setGestureRoute,
         onOpenWebhookSettings = { webhookViewModel.openDialog(it) },
         onDisableWebhook = viewModel::disableWebhook,
+        agentPlugins = agentPlugins,
+        onConnectAgentPlugin = { provider ->
+            if (provider is PblPluginIntegrationProvider) {
+                coreNav.navigateTo(CommonRoutes.WatchappSettingsRoute(uuid = provider.pluginUuid.toString(), title = provider.title))
+            }
+        },
     )
 }
 

@@ -1,7 +1,9 @@
 package coredevices.ring.agent.integrations.providers
 
 import co.touchlab.kermit.Logger
+import coredevices.ring.agent.integrations.AgentIntegration
 import coredevices.ring.agent.integrations.DelegatedIntegrationItems
+import coredevices.ring.agent.integrations.DelegatingAgentIntegration
 import coredevices.ring.agent.integrations.DelegatingNoteIntegration
 import coredevices.ring.agent.integrations.DelegatingReminderIntegration
 import coredevices.ring.agent.integrations.NoteIntegration
@@ -19,9 +21,9 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 
 /**
- * The single place to find note/reminder providers: the built-in ones plus any installed plugin
- * that declares the matching actions. Owns which provider is selected for notes and for reminders,
- * and hands tools the integration to write through.
+ * The single place to find note/reminder/agent providers: the built-in ones plus any installed
+ * plugin that declares the matching actions. Owns which provider is selected for notes and for
+ * reminders, and hands tools the integration to write through.
  */
 class IntegrationProviderRepository(
     private val preferences: Preferences,
@@ -116,6 +118,21 @@ class IntegrationProviderRepository(
         }
     }
 
+    /** The integration tools send agent messages through. Agent providers have no stored selection. */
+    fun agentIntegration(provider: IntegrationProvider): AgentIntegration {
+        logger.i { "Creating agent integration for provider: ${provider.id}" }
+        _integrationUsed.tryEmit(provider)
+        val integration = provider.agent()
+        return if (provider.storesItemsLocally) {
+            integration
+        } else {
+            DelegatingAgentIntegration(integration, provider.title, delegatedItems)
+        }
+    }
+
+    /** The agent plugin a gesture routes to, or null when it is gone or no longer offers it. */
+    fun agentProvider(id: String): IntegrationProvider? = findProvider(id)?.takeIf { it.supportsAgent }
+
     /** Label of the provider a shortcut sends to, or null for [NoteShortcutType.SendToMe]. */
     fun shortcutDestinationTitle(shortcut: NoteShortcutType): String? = when (shortcut) {
         NoteShortcutType.SendToMe -> null
@@ -128,9 +145,10 @@ class IntegrationProviderRepository(
     private fun resolve(id: String, support: IntegrationSupport): IntegrationProvider =
         findProvider(id)?.takeIf { support in it.supports } ?: defaultProvider
 
-    private fun selected(support: IntegrationSupport): IntegrationProvider = when (support) {
+    private fun selected(support: IntegrationSupport): IntegrationProvider? = when (support) {
         IntegrationSupport.Note -> selectedNoteProvider.value
         IntegrationSupport.Reminder -> selectedReminderProvider.value
+        IntegrationSupport.Agent -> providers(support).firstOrNull()
     }
 
     companion object {

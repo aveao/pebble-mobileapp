@@ -2,7 +2,9 @@ package coredevices.ring.agent.integrations.providers
 
 import PlatformUiContext
 import com.russhwolf.settings.MapSettings
+import coredevices.ring.agent.integrations.AgentIntegration
 import coredevices.ring.agent.integrations.DelegatedIntegrationItems
+import coredevices.ring.agent.integrations.DelegatingAgentIntegration
 import coredevices.ring.agent.integrations.DelegatingNoteIntegration
 import coredevices.ring.agent.integrations.DelegatingReminderIntegration
 import coredevices.ring.agent.integrations.ItemSource
@@ -60,6 +62,13 @@ private class FakeReminderIntegration : ReminderIntegration {
     override suspend fun isAuthorized() = true
 }
 
+private class FakeAgentIntegration : AgentIntegration {
+    override suspend fun sendToAgent(message: String, chatId: String?, source: ItemSource?): String = "sent"
+    override suspend fun signIn(uiContext: PlatformUiContext) = true
+    override suspend fun unlink() {}
+    override suspend fun isAuthorized() = true
+}
+
 private class FakeProvider(
     override val id: String,
     override val supports: Set<IntegrationSupport>,
@@ -70,9 +79,11 @@ private class FakeProvider(
 ) : IntegrationProvider {
     val notes = FakeNoteIntegration()
     val reminders = FakeReminderIntegration()
+    val agent = FakeAgentIntegration()
     override suspend fun isAuthorized() = authorized
     override fun notes(): NoteIntegration = notes
     override fun reminders(): ReminderIntegration = reminders
+    override fun agent(): AgentIntegration = agent
 }
 
 private class FakePlatform(override val name: String) : Platform {
@@ -247,6 +258,24 @@ class IntegrationProviderRepositoryTest {
 
         assertIs<DelegatingNoteIntegration>(repository.noteIntegration(notion))
         assertIs<DelegatingReminderIntegration>(repository.reminderIntegration(googleTasks))
+    }
+
+    @Test
+    fun agentIntegrationsRecordDelegatedItemsAndOnlyAgentProvidersResolveForGestures() {
+        val claude = FakeProvider("plugin:claude", setOf(IntegrationSupport.Agent))
+        val repository = IntegrationProviderRepository(
+            preferences = preferences,
+            plugins = FakePlugins(),
+            platform = FakePlatform("Android"),
+            delegatedItems = DelegatedIntegrationItems(ItemFactory(), ItemRepository(FakeCachedItemDao(), cancelReminder = {})),
+            builtIn = builtIn + claude,
+        )
+
+        assertIs<DelegatingAgentIntegration>(repository.agentIntegration(claude))
+        assertSame(claude, repository.agentProvider(claude.id))
+        assertNull(repository.agentProvider(notion.id))
+        assertNull(repository.agentProvider("plugin:gone"))
+        assertSame(claude, repository.destinationProvider(null, IntegrationSupport.Agent))
     }
 
     @Test

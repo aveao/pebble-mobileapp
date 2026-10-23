@@ -8,7 +8,7 @@ import kotlin.uuid.Uuid
 
 /**
  * Action names reserved for note/reminder destinations (see [PblPluginIntegrationProvider]).
- * These are never exposed to the agent as MCP tools.
+ * These are never exposed to the agent as MCP tools; `send_to_agent` stays a tool as well.
  */
 val DESTINATION_ACTION_NAMES: Set<String> = setOf(
     PblPluginActionNoteIntegration.ACTION_NAME,

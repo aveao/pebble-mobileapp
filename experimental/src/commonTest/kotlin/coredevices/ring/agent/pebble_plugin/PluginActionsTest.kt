@@ -21,6 +21,11 @@ class PluginActionsTest {
         name = "Notes",
         pluginUuid = Uuid.parse("00000000-0000-0000-0002-000000000002"),
     ).metadata
+    private val claude = FakePlugin(
+        actions = listOf(ActionDeclaration(name = "send_to_agent")),
+        name = "Claude",
+        pluginUuid = Uuid.parse("00000000-0000-0000-0002-000000000005"),
+    ).metadata
     private val music = FakePlugin(
         actions = listOf(ActionDeclaration(name = "next")),
         name = "Music",
@@ -47,9 +52,10 @@ class PluginActionsTest {
     ).metadata
 
     @Test
-    fun `destination actions are not agent actions`() {
+    fun `destination actions are not agent actions, but send_to_agent is`() {
         assertEquals(listOf("create_todo"), things.agentActions().map { it.name })
         assertEquals(emptyList(), notes.agentActions())
+        assertEquals(listOf("send_to_agent"), claude.agentActions().map { it.name })
     }
 
     @Test

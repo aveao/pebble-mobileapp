@@ -19,6 +19,7 @@ import coredevices.ring.agent.integrations.providers.IntegrationSupport
 import coredevices.ring.agent.integrations.providers.visibleDestinations
 import coredevices.ring.agent.pebble_plugin.FakePlugin
 import coredevices.ring.agent.pebble_plugin.FakePlugins
+import coredevices.ring.agent.pebble_plugin.PblPluginActionAgentIntegration
 import coredevices.ring.agent.pebble_plugin.PblPluginActionNoteIntegration
 import coredevices.ring.agent.pebble_plugin.PblPluginActionReminderIntegration
 import coredevices.ring.agent.pebble_plugin.PblPluginIntegrationProvider
@@ -210,6 +211,7 @@ class IndexActionsSectionTest {
                 name = when (it) {
                     IntegrationSupport.Note -> PblPluginActionNoteIntegration.ACTION_NAME
                     IntegrationSupport.Reminder -> PblPluginActionReminderIntegration.ACTION_NAME
+                    IntegrationSupport.Agent -> PblPluginActionAgentIntegration.ACTION_NAME
                 }
             )
         },
@@ -219,6 +221,7 @@ class IndexActionsSectionTest {
                 category = when (it) {
                     IntegrationSupport.Note -> PblPluginActionNoteIntegration.CATEGORY
                     IntegrationSupport.Reminder -> PblPluginActionReminderIntegration.CATEGORY
+                    IntegrationSupport.Agent -> PblPluginActionAgentIntegration.CATEGORY
                 },
                 items = listOf("configured"),
             )

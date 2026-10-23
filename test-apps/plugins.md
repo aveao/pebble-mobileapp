@@ -112,12 +112,21 @@ Examples now:
 | `finance`       | `stock`                                                           | Stocks demo |
 | `notes`         | `destination`, `configured`                                       | Notion demo |
 | `reminders`     | `list`, `configured`                                              | Todoist, TickTick demos |
+| `agent`         | `chats`, `configured`                                             |           |
 
-A plugin is offered as a notes / reminders destination for the Index agent when it declares a
-`create_note` / `create_reminder` action *and* serves `notes/configured` / `reminders/configured`:
-one instance whose `configured` property is a `boolean` that is true once the user has signed in and
-set everything the action needs. While it reads false the destination shows a Connect button that
-opens the plugin's settings page. An action without its `configured` source is not offered.
+A plugin is offered as a notes / reminders / agent destination for the Index agent when it declares
+a `create_note` / `create_reminder` / `send_to_agent` action *and* serves `notes/configured` /
+`reminders/configured` / `agent/configured`: one instance whose `configured` property is a `boolean`
+that is true once the user has signed in and set everything the action needs. While it reads false
+the destination shows a Connect button that opens the plugin's settings page. An action without its
+`configured` source is not offered.
+
+`send_to_agent` takes `{ message, chat_id? }` and forwards the user's message to an external agent.
+A plugin that keeps several chats can serve `agent/chats`, one instance per chat with its id as the
+`instanceId` and its nickname as the `name` property; the host lists these and passes the chosen one
+as `chat_id`. Without that source the chat sent to is decided by the plugin (usually a new chat each
+time). Unlike `create_note` and `create_reminder`, `send_to_agent` is also offered to the Index agent
+as a tool, so the user can ask for something to be sent to the agent by name.
 
 The built-in Watch State plugin has no sources, only actions, both needing `LaunchApps`:
 `launch_app` (`{ uuid }`) opens an app or watchface in the user's locker, and
