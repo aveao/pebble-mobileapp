@@ -487,6 +487,9 @@ What a plugin has to work with:
 Return every property and shape you can; text shapes cost nothing once you have the data, and the
 app picks. Only produce `icon`/`image` when the request has `iconPixelSize`.
 
+The Pebble app checks every update before an app sees it: a shape your manifest doesn't declare, or
+one that doesn't match its format (above), is dropped. Why shows up in `pebble logs`.
+
 ## Settings pages
 
 Until now, a PKJS settings page had to be hosted somewhere (or generated with Clay), and could only
