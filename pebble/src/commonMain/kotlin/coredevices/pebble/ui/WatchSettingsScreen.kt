@@ -164,6 +164,7 @@ import io.rebble.libpebblecommon.connection.ConnectedPebble
 import io.rebble.libpebblecommon.connection.KnownPebbleDevice
 import io.rebble.libpebblecommon.database.entity.HRMonitoringInterval
 import io.rebble.libpebblecommon.database.entity.HealthGender
+import io.rebble.libpebblecommon.database.entity.QuietTimeSchedule
 import io.rebble.libpebblecommon.js.PKJSApp
 import io.rebble.libpebblecommon.metadata.WatchType
 import io.rebble.libpebblecommon.packets.ProtocolCapsFlag
@@ -756,6 +757,56 @@ fun rememberSettingsItemsState(navBarNav: NavBarNav?, snackbarDisplay: SnackbarD
                             coreConfig.copy(
                                 notifyWatchFullyCharged = it
                             )
+                        )
+                    },
+                ),
+                basicSettingsToggleItem(
+                    title = "Automatic firmware updates",
+                    description = "Install PebbleOS updates automatically when available",
+                    topLevelType = TopLevelType.Phone,
+                    section = Section.General,
+                    keywords = "firmware pebbleos update automatic",
+                    checked = coreConfig.autoFirmwareUpdate,
+                    onCheckChanged = {
+                        coreConfigHolder.update(coreConfig.copy(autoFirmwareUpdate = it))
+                    },
+                ),
+                SettingsItem(
+                    title = "Firmware update time window",
+                    topLevelType = TopLevelType.Phone,
+                    section = Section.General,
+                    keywords = "firmware pebbleos update automatic time window",
+                    show = { coreConfig.autoFirmwareUpdate },
+                    isDebugSetting = false,
+                    item = {
+                        val window = coreConfig.autoFirmwareUpdateWindow
+                        ListItem(
+                            headlineContent = {
+                                Text("Only update during time window")
+                            },
+                            leadingContent = {
+                                Checkbox(
+                                    checked = window != null,
+                                    onCheckedChange = {
+                                        coreConfigHolder.update(
+                                            coreConfig.copy(
+                                                autoFirmwareUpdateWindow = if (it) QuietTimeSchedule(2, 0, 5, 0) else null
+                                            )
+                                        )
+                                    },
+                                )
+                            },
+                            supportingContent = {
+                                if (window != null) {
+                                    SelectTimeRange(
+                                        schedule = window,
+                                        onChangeSchedule = {
+                                            coreConfigHolder.update(coreConfig.copy(autoFirmwareUpdateWindow = it))
+                                        },
+                                    )
+                                }
+                            },
+                            shadowElevation = ELEVATION,
                         )
                     },
                 ),

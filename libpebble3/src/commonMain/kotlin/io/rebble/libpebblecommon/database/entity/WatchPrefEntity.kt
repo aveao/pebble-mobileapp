@@ -34,6 +34,7 @@ import io.rebble.libpebblecommon.util.Endian
 import io.rebble.libpebblecommon.util.asTimelineColor
 import io.rebble.libpebblecommon.util.toPebbleColor
 import io.rebble.libpebblecommon.util.toProtocolNumber
+import kotlinx.datetime.LocalTime
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import kotlin.coroutines.cancellation.CancellationException
@@ -187,6 +188,7 @@ class QLMappable(
  * (e.g. 22:00 to 07:00).
  */
 @Immutable
+@Serializable
 data class QuietTimeSchedule(
     val fromHour: Int,
     val fromMinute: Int,
@@ -196,6 +198,12 @@ data class QuietTimeSchedule(
     fun fromTime(): String = time(fromHour, fromMinute)
     fun toTime(): String = time(toHour, toMinute)
     fun encode(): String = "${fromTime()}-${toTime()}"
+
+    fun contains(time: LocalTime): Boolean {
+        val from = LocalTime(fromHour, fromMinute)
+        val to = LocalTime(toHour, toMinute)
+        return if (from < to) time >= from && time < to else time >= from || time < to
+    }
 
     companion object {
         private fun time(hour: Int, minute: Int): String =

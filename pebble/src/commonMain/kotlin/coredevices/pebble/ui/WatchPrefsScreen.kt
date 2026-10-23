@@ -343,7 +343,7 @@ private enum class ScheduleEdge(val title: String) {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun SelectTimeRange(
+internal fun SelectTimeRange(
     schedule: QuietTimeSchedule,
     onChangeSchedule: (QuietTimeSchedule) -> Unit,
 ) {
