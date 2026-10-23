@@ -10,15 +10,11 @@ import coredevices.mcp.client.McpSession
 import coredevices.ring.agent.builtin_servlets.plugins.PluginsServlet
 import coredevices.ring.agent.pebble_plugin.PblPluginMcpIntegration
 import coredevices.ring.agent.pebble_plugin.PluginGrant
-import coredevices.ring.agent.pebble_plugin.forWatchPaired
-import coredevices.ring.agent.pebble_plugin.withGrant
 import coredevices.ring.database.room.repository.McpServerRepository
-import coredevices.ring.database.room.repository.PluginGrantRepository
 import coredevices.ring.database.room.repository.McpServerEntry
 import io.modelcontextprotocol.kotlin.sdk.types.Implementation
 import io.rebble.libpebblecommon.connection.Plugins
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 
 private val implementation = Implementation(
@@ -31,13 +27,9 @@ class McpSessionFactory(
     private val builtinServletRepository: BuiltinServletRepository,
     private val mcpServerCache: McpServerCache,
     private val plugins: Plugins,
-    private val pluginGrants: PluginGrantRepository,
-    private val watchPaired: Flow<Boolean>,
+    private val indexActions: IndexActionsRepository,
 ) {
-    private suspend fun pluginsWith(grant: PluginGrant) =
-        plugins.getAllPlugins()
-            .forWatchPaired(watchPaired.first())
-            .withGrant(grant, pluginGrants.disabledPluginsNow(grant))
+    private suspend fun pluginsWith(grant: PluginGrant) = indexActions.grantedPlugins(grant).first()
 
     /** One integration per plugin granting actions, plus the sources servlet if any plugin grants those. */
     private suspend fun getPluginServers(): List<McpIntegration> {

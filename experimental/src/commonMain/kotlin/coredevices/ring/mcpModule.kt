@@ -33,8 +33,7 @@ internal val mcpModule = module {
             builtinServletRepository = get(),
             mcpServerCache = get(),
             plugins = get(),
-            pluginGrants = get(),
-            watchPaired = get<LibPebble>().watches.map { devices -> devices.any { it is KnownPebbleDevice } },
+            indexActions = get(),
         )
     }
     single {

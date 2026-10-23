@@ -296,4 +296,27 @@ class IndexActionsRepositoryTest {
         fixture.watch.value = true
         assertEquals(listOf("Things", "Watch State"), fixture.repo.plugins.first().map { it.title })
     }
+
+    @Test
+    fun grantedPluginsFollowTheGrantOfferedTheDisabledSetAndTheWatch() = runTest {
+        val fixture = Fixture(
+            isAndroid = true,
+            plugins = listOf(things, weather, both, empty, watchState),
+            watchPaired = false,
+        )
+        val repo = fixture.repo
+
+        assertEquals(listOf("Things", "Home"), repo.grantedPlugins(PluginGrant.Actions).first().map { it.name })
+        assertEquals(listOf("Weather", "Home"), repo.grantedPlugins(PluginGrant.Sources).first().map { it.name })
+
+        repo.setPluginGrantEnabled(both.pluginUuid, PluginGrant.Actions, false)
+        assertEquals(listOf("Things"), repo.grantedPlugins(PluginGrant.Actions).first().map { it.name })
+        assertEquals(listOf("Weather", "Home"), repo.grantedPlugins(PluginGrant.Sources).first().map { it.name })
+
+        fixture.watch.value = true
+        assertEquals(
+            listOf("Things", "Watch State"),
+            repo.grantedPlugins(PluginGrant.Actions).first().map { it.name },
+        )
+    }
 }
