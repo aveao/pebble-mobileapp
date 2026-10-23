@@ -13,6 +13,7 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.emitAll
@@ -27,6 +28,7 @@ import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.serialization.json.JsonObject
 import kotlin.time.Duration
+import kotlin.uuid.Uuid
 
 sealed interface PluginCaller {
     /** Checking plugin state for the UI rather than acting for the user: never prompts, isn't counted. */
@@ -57,7 +59,12 @@ class PluginClient(
 ) : Plugins {
     private val logger = Logger.withTag("PluginClient")
 
-    override fun registerPlugin(plugin: Plugin) = registry.registerPlugin(plugin)
+    override val disabledBuiltInPlugins: StateFlow<Set<Uuid>> get() = registry.disabledBuiltIns
+
+    override fun setBuiltInPluginEnabled(pluginUuid: Uuid, enabled: Boolean) =
+        registry.setBuiltInEnabled(pluginUuid, enabled)
+
+    override fun registerPlugin(plugin: NativePlugin) = registry.registerPlugin(plugin)
 
     override fun nativePlugins(): Flow<List<PluginMetadata>> = registry.nativePlugins()
 

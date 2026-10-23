@@ -1,5 +1,6 @@
 package io.rebble.libpebblecommon.plugin
 
+import com.russhwolf.settings.MapSettings
 import io.rebble.libpebblecommon.LibPebbleAnalytics
 import io.rebble.libpebblecommon.WatchConfig
 import io.rebble.libpebblecommon.asFlow
@@ -87,7 +88,7 @@ class PluginClientTest {
     private val running = RunningApps(NoWatches)
     private val analytics = CountingAnalytics()
     private val logs = PluginLogs()
-    private val registry = PluginRegistry(emptySet(), WatchConfig(enablePlugins = true).asFlow())
+    private val registry = PluginRegistry(emptySet(), WatchConfig(enablePlugins = true).asFlow(), MapSettings())
     private val client = PluginClient(registry, permissions(dao, running = running), running, analytics, logs)
 
     private fun ClientFakePlugin.registered(): PluginMetadata = also { registry.registerPlugin(it) }.metadata

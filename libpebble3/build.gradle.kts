@@ -132,6 +132,7 @@ kotlin {
             implementation(libs.kotlin.test)
             implementation(libs.coroutines.test)
             implementation(libs.ktor.client.mock)
+            implementation(libs.settings.test)
         }
 
         androidMain.dependencies {

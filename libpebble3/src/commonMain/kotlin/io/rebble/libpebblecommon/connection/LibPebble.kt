@@ -64,7 +64,7 @@ import io.rebble.libpebblecommon.permissions.RequestedPermissions
 import io.rebble.libpebblecommon.plugin.ConfigMessageTarget
 import io.rebble.libpebblecommon.plugin.ActionResult
 import io.rebble.libpebblecommon.plugin.IconPixelSize
-import io.rebble.libpebblecommon.plugin.Plugin
+import io.rebble.libpebblecommon.plugin.NativePlugin
 import io.rebble.libpebblecommon.plugin.PluginCaller
 import io.rebble.libpebblecommon.plugin.PluginClient
 import io.rebble.libpebblecommon.plugin.PluginErrors
@@ -233,10 +233,15 @@ interface Weather {
 /** The installed plugins, and the only way to call them (see `new-plugin-api.md`). */
 interface Plugins {
     /** For plugins outside libpebble3, whose Koin context is isolated. */
-    fun registerPlugin(plugin: Plugin)
+    fun registerPlugin(plugin: NativePlugin)
 
     /** Built-in plugins (phone-side data sources like Music or Weather), not backed by a pbw. */
     fun nativePlugins(): Flow<List<PluginMetadata>>
+
+    val disabledBuiltInPlugins: StateFlow<Set<Uuid>>
+
+    /** A disabled built-in is hidden from every caller, as if it weren't installed. */
+    fun setBuiltInPluginEnabled(pluginUuid: Uuid, enabled: Boolean)
 
     /** The script behind [pluginUuid]'s settings page, or null if it has none. */
     fun configMessageTarget(pluginUuid: String): ConfigMessageTarget?

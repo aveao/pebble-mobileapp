@@ -63,7 +63,7 @@ import io.rebble.libpebblecommon.permissions.AppPermissionStatus
 import io.rebble.libpebblecommon.permissions.InstallReview
 import io.rebble.libpebblecommon.permissions.RequestedPermissions
 import io.rebble.libpebblecommon.plugin.PluginCaller
-import io.rebble.libpebblecommon.plugin.Plugin
+import io.rebble.libpebblecommon.plugin.NativePlugin
 import io.rebble.libpebblecommon.plugin.PluginErrors
 import io.rebble.libpebblecommon.plugin.PluginMetadata
 import io.rebble.libpebblecommon.plugin.SourceUpdate
@@ -511,7 +511,12 @@ class FakeLibPebble : LibPebble {
 
     override val currentWeather: Flow<List<WeatherAppEntry>> = flowOf(emptyList())
 
-    override fun registerPlugin(plugin: Plugin) {
+    override fun registerPlugin(plugin: NativePlugin) {
+    }
+
+    override val disabledBuiltInPlugins: StateFlow<Set<Uuid>> = MutableStateFlow(emptySet())
+
+    override fun setBuiltInPluginEnabled(pluginUuid: Uuid, enabled: Boolean) {
     }
 
     override fun activePermissionRequests(): Flow<List<LockerAppPermission>> = flowOf(emptyList())

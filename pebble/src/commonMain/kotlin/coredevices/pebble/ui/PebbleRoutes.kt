@@ -122,6 +122,9 @@ object PebbleNavBarRoutes {
 
     /** [uuid] reads the installed pbw; [pbwUrl] fetches a store app's. */
     @Serializable
+    data class NativePluginRoute(val uuid: String) : NavBarRoute
+
+    @Serializable
     data class PluginSourceRoute(val uuid: String?, val pbwUrl: String?, val script: String, val title: String) : NavBarRoute
 }
 
@@ -273,6 +276,10 @@ fun NavGraphBuilder.addNavBarRoutes(
             Section.valueOf(route.section),
             TopLevelType.valueOf(route.topLevelType),
         )
+    }
+    composableWithAnimations<PebbleNavBarRoutes.NativePluginRoute>(viewModel) {
+        val route: PebbleNavBarRoutes.NativePluginRoute = it.toRoute()
+        NativePluginScreen(nav, topBarParams, Uuid.parse(route.uuid))
     }
     composableWithAnimations<PebbleNavBarRoutes.PluginSourceRoute>(viewModel) {
         val route: PebbleNavBarRoutes.PluginSourceRoute = it.toRoute()
