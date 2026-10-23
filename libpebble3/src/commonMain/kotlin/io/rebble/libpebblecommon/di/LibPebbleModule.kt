@@ -85,6 +85,8 @@ import io.rebble.libpebblecommon.connection.endpointmanager.LanguagePackInstalle
 import io.rebble.libpebblecommon.connection.endpointmanager.InterruptedFirmwareUpdates
 import io.rebble.libpebblecommon.connection.endpointmanager.RealFirmwareUpdater
 import io.rebble.libpebblecommon.connection.endpointmanager.RealLanguagePackInstaller
+import io.rebble.libpebblecommon.connection.endpointmanager.audio.AudioFrameDecoder
+import io.rebble.libpebblecommon.connection.endpointmanager.audio.SpeexAudioFrameDecoder
 import io.rebble.libpebblecommon.connection.endpointmanager.audio.VoiceSessionManager
 import io.rebble.libpebblecommon.connection.endpointmanager.blobdb.BlobDB
 import io.rebble.libpebblecommon.connection.endpointmanager.blobdb.BlobDbDaos
@@ -364,6 +366,7 @@ fun initKoin(
                 single { webServices }
                 single { tokenProvider }
                 single { transcriptionProvider }
+                singleOf(::SpeexAudioFrameDecoder) bind AudioFrameDecoder::class
                 single { injectedPKJSHttpInterceptors }
                 single { getRoomDatabase(get()) }
                 singleOf(::StaticLockerPBWCache) bind LockerPBWCache::class

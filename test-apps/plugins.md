@@ -193,7 +193,7 @@ Declare what your app and its plugin need once, in the `pebble` block of `packag
 }
 ```
 
-The built-in permissions are `Internet`, `LocalNetwork`, `Location`, `Notifications`, `Calendar`,
+The built-in permissions are `Internet`, `LocalNetwork`, `Location`, `Microphone`, `Notifications`, `Calendar`,
 `Contacts`, `Timeline`, `ReadWatchSettings`/`WriteWatchSettings`, `ReadMusic`/`ControlMusic`,
 `LaunchApps`, `FindMyPhone`, `ReadFiles`/`WriteFiles`, `LegacyPebbleKit` and `Health`.
 
@@ -207,6 +207,8 @@ The built-in permissions are `Internet`, `LocalNetwork`, `Location`, `Notificati
   with it. See [File access](#file-access).
 - `LegacyPebbleKit` lets your watchapp talk to a companion app over PebbleKit Classic. A PebbleKit 2
   companion doesn't need declaring: each package your appinfo lists is asked about on its own.
+- `Microphone` allows watch microphone streaming to PebbleKit JS and local `mic_capture_*`
+  capture (SDK revision 111); declare it in `usesPermissions`.
 - `Health` isn't enforced yet: health data is read on the watch, so enforcing it needs permissions
   synced to the watch, which isn't built yet. Declare it anyway if you use health data.
 

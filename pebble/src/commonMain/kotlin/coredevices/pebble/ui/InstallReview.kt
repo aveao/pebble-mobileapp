@@ -21,6 +21,7 @@ import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.PhonelinkRing
 import androidx.compose.material.icons.filled.Notifications
@@ -168,6 +169,7 @@ private fun permissionIcon(key: String, defined: Map<String, PluginDefinedPermis
     PluginPermissions.INTERNET, PluginPermissions.GLOBAL_INTERNET -> Icons.Filled.Public
     PluginPermissions.LOCAL_NETWORK -> Icons.Filled.Router
     PluginPermissions.LOCATION -> Icons.Filled.LocationOn
+    PluginPermissions.WATCH_MICROPHONE -> Icons.Filled.Mic
     PluginPermissions.NOTIFICATIONS -> Icons.Filled.Notifications
     PluginPermissions.CALENDAR -> Icons.Filled.CalendarMonth
     PluginPermissions.CONTACTS -> Icons.Filled.Contacts
@@ -188,6 +190,7 @@ fun permissionLabel(key: String, defined: Map<String, PluginDefinedPermission>):
     PluginPermissions.LOCAL_NETWORK -> "Connect to devices on your local network"
     PluginPermissions.GLOBAL_INTERNET -> "Connect to any website or local device"
     PluginPermissions.LOCATION -> "Use your location"
+    PluginPermissions.WATCH_MICROPHONE -> "Use your watch microphone"
     PluginPermissions.NOTIFICATIONS -> "Read your notifications"
     PluginPermissions.CALENDAR -> "Read your calendar"
     PluginPermissions.CONTACTS -> "Read your contacts"

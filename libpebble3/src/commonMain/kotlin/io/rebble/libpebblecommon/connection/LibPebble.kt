@@ -501,7 +501,7 @@ class LibPebble3(
     private val vibePatternDao: VibePatternDao,
     private val watchPreferences: WatchPrefs,
     private val weatherManager: WeatherManager,
-    appPermissions: AppPermissions,
+    private val appPermissions: AppPermissions,
     pluginClient: PluginClient,
     pluginFileAccess: PluginFileAccess,
 ) : LibPebble, Scanning by scanning, RequestSync by webSyncManager, LockerApi by locker,
@@ -520,6 +520,7 @@ class LibPebble3(
             logger.w { "Already initialized!!!" }
             return
         }
+        appPermissions.init()
         WatchHardwarePlatform.init(libPebbleCoroutineScope, libPebbleConfigFlow.config)
         bluetoothStateProvider.init()
         gattServerManager.init()

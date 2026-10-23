@@ -19,13 +19,15 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.shareIn
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.serialization.Serializable
 import kotlin.time.Clock
-import kotlin.time.Duration
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 import kotlin.uuid.Uuid
@@ -36,7 +38,7 @@ enum class PermissionPolicy {
     AskIfExfiltrating,
     /** Asks for everything. */
     AlwaysAsk,
-    /** Anything that would need approval is granted. The user's explicit denials still stand. */
+    /** Grants requests automatically. */
     NeverAsk,
 }
 
@@ -67,6 +69,7 @@ enum class PermissionDecision {
 interface InstalledApps {
     fun subjectsOf(appUuids: Set<Uuid>): Flow<Map<Uuid, PermissionSubject>>
     fun pluginPermissions(): Flow<Map<String, PluginDefinedPermission>>
+    suspend fun syncMicrophoneGrants(grants: Set<Uuid>) {}
 }
 
 class LockerInstalledApps(private val lockerEntryDao: LockerEntryRealDao) : InstalledApps {
@@ -74,6 +77,8 @@ class LockerInstalledApps(private val lockerEntryDao: LockerEntryRealDao) : Inst
         .map { entries -> entries.associate { it.id to it.permissionSubject() } }
 
     override fun pluginPermissions() = lockerEntryDao.getPluginEntriesFlow().map(::pluginDefinedPermissions)
+
+    override suspend fun syncMicrophoneGrants(grants: Set<Uuid>) = lockerEntryDao.syncMicrophoneGrants(grants)
 }
 
 private fun LockerEntry.permissionSubject() = PermissionSubject(
@@ -102,7 +107,11 @@ class AppPermissions(
     private val runningApps: RunningApps,
     private val scope: LibPebbleCoroutineScope,
 ) : AppPermissionsApi {
-    /** When false everything is granted, so callers may skip checking. */
+    fun init() {
+        localMicrophoneGrants().onEach { installed.syncMicrophoneGrants(it) }.launchIn(scope)
+    }
+
+    /** Controls the permission system. */
     val enforcing: Boolean get() = watchConfig.value.enablePlugins
 
     suspend fun subjectOf(appUuid: Uuid): PermissionSubject? = installed.subjectsOf(setOf(appUuid)).first()[appUuid]
@@ -182,6 +191,23 @@ class AppPermissions(
                 decidePermission(it, subject, rows, config.watchConfig, defined) == PermissionDecision.Granted
             }.toSet()
         }.distinctUntilChanged()
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    fun localMicrophoneGrants(): Flow<Set<Uuid>> =
+        combine(dao.allFlow(), watchConfig.flow, installed.pluginPermissions()) { rows, config, defined ->
+            Triple(rows, config.watchConfig, defined)
+        }.flatMapLatest { (rows, config, defined) ->
+            if (!config.enablePlugins) return@flatMapLatest flowOf(emptySet())
+            val appRows = rows.groupBy { it.appUuid }
+                .filterValues { permissions -> permissions.any { it.permission == PluginPermissions.WATCH_MICROPHONE } }
+            installed.subjectsOf(appRows.keys).map { subjects ->
+                subjects.filterKeys { it in appRows }.values.filter { subject ->
+                    decidePermission(
+                        PluginPermissions.WATCH_MICROPHONE, subject, appRows.getValue(subject.appUuid), config, defined,
+                    ) == PermissionDecision.Granted
+                }.map { it.appUuid }.toSet()
+            }
+        }
 
     suspend fun recordRequested(appUuid: Uuid, permissions: Collection<String>) {
         val now = clock.now().toEpochMilliseconds()

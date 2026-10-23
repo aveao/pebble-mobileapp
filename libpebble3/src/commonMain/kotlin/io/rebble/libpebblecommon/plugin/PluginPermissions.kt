@@ -59,6 +59,7 @@ object PluginPermissions {
     /** Legacy apps only. */
     const val GLOBAL_INTERNET = "GlobalInternet"
     const val LOCATION = "Location"
+    const val WATCH_MICROPHONE = "WatchMicrophone"
     const val NOTIFICATIONS = "Notifications"
     const val CALENDAR = "Calendar"
     const val CONTACTS = "Contacts"

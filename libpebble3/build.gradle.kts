@@ -110,6 +110,7 @@ kotlin {
             implementation(libs.sqlite.bundled)
             api(libs.kotlinx.io.core)
             implementation(libs.kotlinx.io.okio)
+            implementation(libs.coredevices.speex)
             implementation(libs.okio)
             implementation(libs.kable)
             implementation(libs.kmpio)
@@ -205,4 +206,3 @@ dependencies {
         }
     }
 }*/
-

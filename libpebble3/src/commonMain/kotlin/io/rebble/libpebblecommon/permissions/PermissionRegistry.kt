@@ -28,6 +28,7 @@ object PermissionRegistry {
         PermissionDefinition(PluginPermissions.LOCAL_NETWORK, PermissionKind.Exfiltrating),
         PermissionDefinition(PluginPermissions.GLOBAL_INTERNET, PermissionKind.Exfiltrating),
         PermissionDefinition(PluginPermissions.LOCATION, PermissionKind.Read),
+        PermissionDefinition(PluginPermissions.WATCH_MICROPHONE, PermissionKind.Read),
         PermissionDefinition(PluginPermissions.NOTIFICATIONS, PermissionKind.Read),
         PermissionDefinition(PluginPermissions.CALENDAR, PermissionKind.Read),
         PermissionDefinition(PluginPermissions.CONTACTS, PermissionKind.Read),
