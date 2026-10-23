@@ -64,6 +64,7 @@ class JsPlugin(
     private val runningApps: RunningApps,
     private val fileAccess: PluginFileAccess,
     private val fileSystem: PluginFileSystem,
+    private val logs: PluginLogs,
     /** Host-side hosted OAuth, when available. Only reachable by plugins that declare a connector. */
     private val oauthApi: PluginOAuthApi? = null,
 ) : Plugin, ConfigMessageTarget {
@@ -345,6 +346,7 @@ class JsPlugin(
             }
             "log" -> {
                 logger.i { "[${args[0]}] ${args[1]}" }
+                logs.log(this@JsPlugin, "[${args[0]}] ${args[1]}")
                 null
             }
             "configMessage" -> {

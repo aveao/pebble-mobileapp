@@ -20,6 +20,7 @@ class JsPluginFactory(
     private val runningApps: RunningApps,
     private val fileAccess: PluginFileAccess,
     private val fileSystem: PluginFileSystem,
+    private val logs: PluginLogs,
     private val oauthApi: PluginOAuthApi? = null,
 ) {
     fun create(
@@ -40,6 +41,7 @@ class JsPluginFactory(
         runningApps = runningApps,
         fileAccess = fileAccess,
         fileSystem = fileSystem,
+        logs = logs,
         oauthApi = oauthApi,
     )
 }

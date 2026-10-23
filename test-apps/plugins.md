@@ -481,6 +481,7 @@ What a plugin has to work with:
   [File System Access API](https://developer.mozilla.org/en-US/docs/Web/API/File_System_API)
   surface: `getFile()`, `createWritable()`, `getFileHandle()`, `getDirectoryHandle()`,
   `removeEntry()`, `entries()`, `queryPermission()`.
+- **`console.log`** shows up in `pebble logs`, beside your app's PKJS logs.
 - Nothing else: unlike PKJS, a plugin has no WebView APIs.
 
 Return every property and shape you can; text shapes cost nothing once you have the data, and the
