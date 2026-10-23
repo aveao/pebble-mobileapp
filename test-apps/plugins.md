@@ -2,8 +2,8 @@
 
 Plugins are nearly here (finally). A plugin is a small piece of JavaScript that runs on the phone and:
 
-- **provides data**: (*sources*) that any Pebble watchface/app (and soon Index) can read
-- **takes actions**: turn a light off, add a task, that a watchface/app (and soon Index) can trigger
+- **provides data**: (*sources*) that any Pebble watchface/app (and Index) can read
+- **takes actions**: turn a light off, add a task, that a watchface/app (and Index) can trigger
 
 It has a generic API, designed to allow any type of data to be exposed, in multiple formats.
 
@@ -21,9 +21,9 @@ default.
   made.
 - Plugins let us expose data the Pebble app has but developers
   couldn't get at before very easily: music, notifications, phone state, and more.
-- Actions let a watch (and, later, Index) control things like lights or
+- Actions let a watch (and Index) control things like lights or
   tasks through a plugin, without every app integrating with every service.
-- Once Index can use plugins, adding a to-do list
+- Index uses plugins too, so adding a to-do list
   service (like the Todoist, TickTick and Notion demos) is just a plugin, with no change to the
   Pebble app.
 
@@ -368,7 +368,7 @@ copy is `stocks/`.
 **If your app fetches data from a service and displays it, consider splitting it into a plugin plus
 the app, in one pbw.** The app reads from its own plugin (pass your pbw's uuid as `plugin`), and
 behaves the same as it does now. But the data is also available to every other watchface and app,
-and later to Index - and users can show it in a design other than yours.
+and to Index - and users can show it in a design other than yours.
 
 ## The manifest
 
@@ -586,9 +586,7 @@ in v1.15.0 (along with several other parts of the API).
 
 We're planning:
 
-- Index integration (plugins as MCP tools).
-- Tooling support (the Pebble tool, CloudPebble).
-- Permission metadata in the app store, so users can review an app's permissions before adding it.
+- Tooling support: `pebble build` and the Pebble tool (in progress), and CloudPebble.
 - Choosing favourite readings in the app, and a preferred plugin when several serve the same thing
   (e.g. weather), plus an API to read those choices.
 - More extensive documentation.
@@ -597,5 +595,5 @@ We're planning:
   display images after restarting, right now)
 - PebbleKit-Android plugin support.
 - Plugins calling other plugins.
-- App store support, including a Plugins section for discovery.
+- Publishing plugins to the app store (it can already list them, but uploads aren't open yet).
 - More built-in plugins exposing more things.
