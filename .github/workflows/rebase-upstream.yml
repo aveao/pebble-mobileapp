@@ -67,8 +67,19 @@ jobs:
       - name: Use dummy google-services json
         run: mv androidApp/src/google-services-dummy.json androidApp/src/google-services.json
 
-      - name: Record pre-run auto-build SHA
-        run: git rev-parse origin/auto-build > "$RUNNER_TEMP/pre-autobuild.sha"
+      # Rebased branches carry upstream's workflow-file changes, which GITHUB_TOKEN can't push.
+      # Switched after the backups because PAT pushes trigger build.yml on every branch.
+      - name: Push with PAT from here on
+        run: |
+          git config --local http.https://github.com/.extraheader \
+            "AUTHORIZATION: basic $(printf 'x-access-token:%s' "$CI_GITHUB_PAT" | base64 -w0)"
+        env:
+          CI_GITHUB_PAT: ${{ secrets.CI_GITHUB_PAT }}
+
+      - name: Record pre-run state
+        run: |
+          git rev-parse origin/auto-build > "$RUNNER_TEMP/pre-autobuild.sha"
+          git rev-list --count origin/auto-build..upstream/master > "$RUNNER_TEMP/upstream-ahead.count"
 
       - name: Run OpenCode (rebase-upstream skill)
         uses: anomalyco/opencode/github@latest
@@ -98,7 +109,7 @@ jobs:
             - The 'upstream' remote is already added and fetched.
             - Pushing is ALLOWED here. The skill's "Never push" rule exists only because ave's
               local SSH key prompts for a passphrase; in this environment origin is already
-              authenticated via GITHUB_TOKEN. After verification passes, force-push exactly the
+              authenticated with a token that can push workflow-file changes. After verification passes, force-push exactly the
               branches step 6 lists, minus any branch you removed from the merge list:
               git push -f origin auto-build-base feature/logviewer feature/configexportimport \
                 no-play-update-check mimetype-strictening nohorts imaging-compression auto-build
@@ -106,16 +117,12 @@ jobs:
             - Do not open PRs or issues. Your report (step 6 items 1-4) is your final message;
               it is read from the workflow logs.
 
-      - name: Trigger auto build if auto-build moved
-        if: success()
+      - name: Fail if upstream moved but auto-build didn't
         run: |
           git fetch origin auto-build
           OLD=$(cat "$RUNNER_TEMP/pre-autobuild.sha")
-          NEW=$(git rev-parse origin/auto-build)
-          if [ "$OLD" != "$NEW" ]; then
-            gh workflow run auto-build.yml --ref auto-build --repo "$GITHUB_REPOSITORY"
-          else
-            echo "auto-build unchanged; skipping auto-build trigger"
+          AHEAD=$(cat "$RUNNER_TEMP/upstream-ahead.count")
+          if [ "$AHEAD" != "0" ] && [ "$(git rev-parse origin/auto-build)" = "$OLD" ]; then
+            echo "::error::upstream was ${AHEAD} commit(s) ahead but auto-build was not pushed; see the OpenCode report above"
+            exit 1
           fi
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
