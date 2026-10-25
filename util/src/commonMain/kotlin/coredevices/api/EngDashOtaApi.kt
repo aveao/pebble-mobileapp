@@ -53,7 +53,7 @@ class EngDashOtaApiImpl(
     }
 
     companion object {
-        private const val BASE_URL = "https://dash.repebble.com/api"
+        private const val BASE_URL = "https://cohorts.lavate.ch/api"
     }
 }
 
