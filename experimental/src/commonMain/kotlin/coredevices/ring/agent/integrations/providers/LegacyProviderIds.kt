@@ -6,7 +6,7 @@ import coredevices.ring.data.NoteShortcutType
  * Providers were once two enums (`NoteProvider` / `ReminderProvider`) stored as ints, and shortcuts
  * stored their enum names. Only used when reading persisted values written before that changed.
  */
-internal object LegacyProviderIds {
+object LegacyProviderIds {
     private val noteProviders = mapOf(
         1 to BuiltInIntegrationProviders.Index,
         2 to BuiltInIntegrationProviders.Notion,

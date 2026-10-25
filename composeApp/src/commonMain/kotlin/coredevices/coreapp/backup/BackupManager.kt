@@ -6,10 +6,13 @@ import com.oldguy.common.io.FileMode
 import com.oldguy.common.io.ZipEntry
 import com.oldguy.common.io.ZipFile
 import coredevices.database.CoreDatabase
+import coredevices.ring.agent.integrations.providers.LegacyProviderIds
 import coredevices.ring.database.Preferences
 import coredevices.ring.database.room.RingDatabase
 import coredevices.util.BackupRestore
 import coredevices.util.CoreConfigHolder
+import coredevices.util.Platform
+import coredevices.util.isAndroid
 import io.rebble.libpebblecommon.connection.AppContext
 import io.rebble.libpebblecommon.connection.LibPebble
 import io.rebble.libpebblecommon.util.getTempFilePath
@@ -34,6 +37,7 @@ class BackupManager(
     private val coreConfigHolder: CoreConfigHolder,
     private val libPebble: LibPebble,
     private val preferences: Preferences,
+    private val platform: Platform,
     private val clock: Clock = Clock.System,
 ) : BackupRestore {
     private val logger = Logger.withTag("BackupManager")
@@ -181,7 +185,6 @@ class BackupManager(
 
     private fun exportRingPreferences(): RingPreferencesExport {
         return RingPreferencesExport(
-            llmMode = preferences.llmMode.value.id,
             useCactusTranscription = preferences.useCactusTranscription.value,
             cactusMode = preferences.cactusMode.id,
             ringPaired = preferences.ringPaired.value,
@@ -190,9 +193,8 @@ class BackupManager(
             debugDetailsEnabled = preferences.debugDetailsEnabled.value,
             approvedBeeperContacts = preferences.approvedBeeperContacts.value,
             secondaryMode = preferences.secondaryMode.value.id,
-            secondaryModeMcpGroupId = preferences.secondaryModeMcpGroupId.value,
-            reminderProvider = preferences.reminderProvider.value.id,
-            noteProvider = preferences.noteProvider.value.id,
+            reminderProviderId = preferences.reminderProviderId.value,
+            noteProviderId = preferences.noteProviderId.value,
             noteShortcut = try {
                 Json.encodeToString(preferences.noteShortcut.value)
             } catch (_: Exception) { null },
@@ -202,6 +204,9 @@ class BackupManager(
             backupEnabled = preferences.backupEnabled.value,
             useEncryption = preferences.useEncryption.value,
             defaultCaptureType = preferences.defaultCaptureType.value.id,
+            targetCalendar = preferences.targetCalendar.value,
+            scanByPairedAddress = preferences.scanByPairedAddress.value,
+            usePendingIntentScan = preferences.usePendingIntentScan.value.takeIf { platform.isAndroid },
         )
     }
 
@@ -212,7 +217,6 @@ class BackupManager(
     }
 
     private suspend fun restoreRingPreferences(prefs: RingPreferencesExport) {
-        preferences.setLlmMode(coredevices.ring.agent.LlmMode.fromId(prefs.llmMode))
         preferences.setUseCactusTranscription(prefs.useCactusTranscription)
         preferences.setCactusMode(coredevices.util.models.CactusSTTMode.fromId(prefs.cactusMode))
         preferences.setRingPaired(prefs.ringPaired)
@@ -221,7 +225,6 @@ class BackupManager(
         preferences.setDebugDetailsEnabled(prefs.debugDetailsEnabled)
         preferences.setApprovedBeeperContacts(prefs.approvedBeeperContacts.ifEmpty { null })
         preferences.setSecondaryMode(coredevices.ring.database.SecondaryMode.fromId(prefs.secondaryMode))
-        preferences.setSecondaryModeMcpGroupId(prefs.secondaryModeMcpGroupId)
         preferences.setAutoDismissActionNotifications(prefs.autoDismissActionNotifications)
         preferences.setPhoneCalendarEnabled(prefs.phoneCalendarEnabled)
         preferences.setBackupEnabled(prefs.backupEnabled)
@@ -229,13 +232,25 @@ class BackupManager(
         preferences.setDefaultCaptureType(coredevices.ring.agent.DefaultCaptureType.fromId(prefs.defaultCaptureType))
         // One-way latch; a false value just means it hasn't fired yet.
         if (prefs.platformSttDefaulted) preferences.setPlatformSttDefaulted()
-        coredevices.ring.agent.builtin_servlets.reminders.ReminderProvider.fromId(prefs.reminderProvider)
-            ?.let { preferences.setReminderProvider(it) }
-        coredevices.ring.agent.builtin_servlets.notes.NoteProvider.fromId(prefs.noteProvider)
-            ?.let { preferences.setNoteProvider(it) }
+        prefs.reminderProviderId?.let { preferences.setReminderProviderId(it) }
+            ?: prefs.reminderProvider?.let { legacy ->
+                LegacyProviderIds.reminderProviderId(legacy)?.let { preferences.setReminderProviderId(it) }
+            }
+        prefs.noteProviderId?.let { preferences.setNoteProviderId(it) }
+            ?: prefs.noteProvider?.let { legacy ->
+                LegacyProviderIds.noteProviderId(legacy)?.let { preferences.setNoteProviderId(it) }
+            }
+        prefs.targetCalendar?.let { preferences.setTargetCalendar(it) }
+        prefs.scanByPairedAddress?.let { preferences.setScanByPairedAddress(it) }
+        if (platform.isAndroid) {
+            prefs.usePendingIntentScan?.let { preferences.setUsePendingIntentScan(it) }
+        }
         prefs.noteShortcut?.let {
             try {
-                preferences.setNoteShortcut(Json.decodeFromString<coredevices.ring.data.NoteShortcutType>(it))
+                val shortcut = LegacyProviderIds.migrate(
+                    Json.decodeFromString<coredevices.ring.data.NoteShortcutType>(it)
+                )
+                preferences.setNoteShortcut(shortcut)
             } catch (_: Exception) {}
         }
     }
