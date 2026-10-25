@@ -14,7 +14,7 @@ jobs:
         with:
           ref: auto-build
           fetch-depth: 0
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.CI_GITHUB_PAT }}
 
       - name: Add upstream remote
         run: git remote add upstream https://github.com/coredevices/mobileapp.git
@@ -39,9 +39,3 @@ jobs:
       - name: Push
         if: steps.check.outputs.count != '0'
         run: git push origin auto-build
-
-      - name: Trigger auto build
-        if: steps.check.outputs.count != '0'
-        run: gh workflow run auto-build.yml --ref auto-build --repo ${{ github.repository }}
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
