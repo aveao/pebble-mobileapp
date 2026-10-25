@@ -1,7 +1,6 @@
 package coredevices.coreapp.backup
 
 import coredevices.ring.agent.DefaultCaptureType
-import coredevices.ring.agent.LlmMode
 import coredevices.ring.agent.builtin_servlets.messaging.ApprovedBeeperContact
 import coredevices.ring.database.MusicControlMode
 import coredevices.ring.database.SecondaryMode
@@ -18,7 +17,6 @@ data class SettingsExport(
 
 @Serializable
 data class RingPreferencesExport(
-    val llmMode: Int = LlmMode.RemoteOnly.id,
     val useCactusTranscription: Boolean = true,
     val cactusMode: Int = 0,
     val ringPaired: String? = null,
@@ -27,9 +25,11 @@ data class RingPreferencesExport(
     val debugDetailsEnabled: Boolean = false,
     val approvedBeeperContacts: List<ApprovedBeeperContact> = emptyList(),
     val secondaryMode: Int = SecondaryMode.Search.id,
-    val secondaryModeMcpGroupId: Long? = null,
-    val reminderProvider: Int = 1,
-    val noteProvider: Int = 1,
+    // Legacy int ids from before providers became integration providers
+    val reminderProvider: Int? = null,
+    val noteProvider: Int? = null,
+    val reminderProviderId: String? = null,
+    val noteProviderId: String? = null,
     val noteShortcut: String? = null,
     val autoDismissActionNotifications: Boolean = true,
     val phoneCalendarEnabled: Boolean = false,
@@ -37,4 +37,8 @@ data class RingPreferencesExport(
     val backupEnabled: Boolean = true,
     val useEncryption: Boolean = false,
     val defaultCaptureType: Int = DefaultCaptureType.Note.id,
+    val targetCalendar: Int? = null,
+    val scanByPairedAddress: Boolean? = null,
+    // Android only; null when exported on iOS where the preference doesn't exist
+    val usePendingIntentScan: Boolean? = null,
 )
