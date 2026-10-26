@@ -33,8 +33,7 @@ default.
 - Build a watchface or app that uses plugin data.
 - Build a plugin.
 
-First, enable plugins in the mobile app (v1.14.0 or above): **Settings → Debug → Show debug options**, then **Use
-experimental plugins**. The demo apps below are installed automatically, and a **Plugins** tab appears in the Apps
+First, enable plugins in the mobile app (v1.16.0 or above): **Settings → Apps → Plugins / permissions preview**. The demo apps below are installed automatically, and a **Plugins** tab appears in the Apps
 screen listing plugins and their settings pages.
 
 ## Try the demo apps and plugins
@@ -223,7 +222,9 @@ The built-in permissions are `Internet`, `LocalNetwork`, `Location`, `Microphone
 
 The [packaging script](#packaging-and-sideloading) marks the pbw as using permissions
 (`manifestVersion: 2` in its appinfo). Without that it's a legacy app, which keeps what apps had
-before permissions: internet access, and what its `capabilities` declare.
+before permissions: internet access, location and timeline pins if it has PebbleKit JS, and
+`LegacyPebbleKit` if it has an Android companion app. Users can have legacy apps ask too, with
+**Ask before older apps use permissions** in settings.
 
 Sources and actions guard themselves with **caller permissions**: what an app must hold to use
 them. `calendar/event` needs `Calendar`, `notifications/notification` needs `Notifications`,
@@ -273,7 +274,7 @@ user a notification and a card in the Pebble app. Until they answer, it fails wi
 `PERMISSION_DENIED` (a blocked `fetch` rejects like a network error), possibly after waiting a few
 seconds. Try again later rather than treating it as permanent.
 
-Users can change any permission on the app's page, and choose in settings when apps have to ask.
+Users can allow or deny any permission on the app's page, and choose in settings when apps have to ask.
 Declare what you need up front, and keep `Internet` to the domains you use: fewer prompts, and
 users can trust you. An app holding `Location` whose only network access is
 `api.openweathermap.org` can't send the user's location anywhere else.
