@@ -408,7 +408,8 @@ interface LockerApi {
     fun getAllLockerUuids(): Flow<List<Uuid>>
     fun getLocker(type: AppType, searchQuery: String?, limit: Int): Flow<List<LockerWrapper>>
     fun getLockerApp(id: Uuid): Flow<LockerWrapper?>
-    fun appPermissionStatuses(id: Uuid): Flow<List<AppPermissionStatus>>
+    /** Null until the app's pbw has been fetched, so what it uses isn't known yet. */
+    fun appPermissionStatuses(id: Uuid): Flow<List<AppPermissionStatus>?>
     /**
      * The config page URL for an installed app, from its appinfo `configPage` — an http(s) URL as
      * given, or an HTML file bundled in the pbw returned as a data URL. Null when the app declares

@@ -269,14 +269,14 @@ fun AppPermissionsSection(appUuid: Uuid) {
     val config by libPebble.config.collectAsState()
     if (!config.watchConfig.enablePlugins) return
     val defined = rememberPluginPermissions()
-    val statuses by remember(appUuid) {
-        libPebble.appPermissionStatuses(appUuid).map { all -> all.sortedBy { it.status != PermissionStatus.Waiting } }
+    val known by remember(appUuid) {
+        libPebble.appPermissionStatuses(appUuid).map { all -> all?.sortedBy { it.status != PermissionStatus.Waiting } }
     }.collectAsState(emptyList())
     // Leaving the page stops asking about anything still waiting.
-    val current by rememberUpdatedState(statuses)
+    val current by rememberUpdatedState(known)
     DisposableEffect(appUuid) {
         onDispose {
-            val unanswered = current.filter { it.status == PermissionStatus.Waiting }.map { it.permission }
+            val unanswered = current.orEmpty().filter { it.status == PermissionStatus.Waiting }.map { it.permission }
             if (unanswered.isNotEmpty()) {
                 GlobalScope.launch { libPebble.markPermissionRequestsSeen(appUuid, unanswered) }
             }
@@ -286,6 +286,17 @@ fun AppPermissionsSection(appUuid: Uuid) {
         libPebble.getLockerApp(appUuid).map { it?.properties?.legacy == true }
     }.collectAsState(false)
     var expanded by remember(appUuid) { mutableStateOf(false) }
+    val statuses = known ?: run {
+        Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
+            Text("Permissions", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(bottom = 4.dp))
+            Text(
+                "Shown once the app has been installed on your watch.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        return
+    }
     if (statuses.isEmpty()) return
     val scope = rememberCoroutineScope()
     Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {

@@ -47,18 +47,22 @@ import io.rebble.libpebblecommon.plugin.PluginNetworkVerdict
 import io.rebble.libpebblecommon.plugin.PluginManifest
 import io.rebble.libpebblecommon.web.LockerModelWrapper
 import io.rebble.libpebblecommon.web.WebSyncManager
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.IO
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -178,7 +182,13 @@ class Locker(
         return lockerEntryDao.getEntryFlow(id).map { it?.wrap(config) }
     }
 
-    override fun appPermissionStatuses(id: Uuid): Flow<List<AppPermissionStatus>> = permissions.statuses(id)
+    override fun appPermissionStatuses(id: Uuid): Flow<List<AppPermissionStatus>?> =
+        combine(permissions.statuses(id), lockerEntryDao.getEntryFlow(id)) { statuses, entry ->
+            statuses.takeIf {
+                it.isNotEmpty() || entry == null || entry.systemApp ||
+                    lockerPBWCache.cachedPBWFileForApp(id, entry.version) != null
+            }
+        }.flowOn(Dispatchers.IO)
 
     private suspend fun pbwFor(uuid: Uuid): PbwApp? {
         val version = lockerEntryDao.getEntryFlow(uuid).first()?.version ?: return null
