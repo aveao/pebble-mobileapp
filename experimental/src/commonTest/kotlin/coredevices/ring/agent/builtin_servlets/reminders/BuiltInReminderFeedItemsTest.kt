@@ -109,7 +109,7 @@ class BuiltInReminderFeedItemsTest {
         val checklist = CachedList(firestoreId = "list_chk", title = "Packing", listKind = "checklist")
         val (feedItems, itemDao) = fixture(defaultLists + checklist)
         feedItems.createFeedItem(
-            localReminderId = 5,
+            itemId = "item-chk",
             title = "Umbrella",
             deadline = null,
             listId = "list_chk",
