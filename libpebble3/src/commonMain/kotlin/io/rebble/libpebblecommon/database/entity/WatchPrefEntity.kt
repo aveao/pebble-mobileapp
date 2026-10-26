@@ -499,13 +499,6 @@ enum class BacklightPresetMode(override val code: UByte, override val displayNam
     Advanced(3u, "Advanced"),
 }
 
-// Codes MUST match the ShellLanguage enum in pebble-firmware:fw/shell/prefs.h. "Custom" (0) means
-// the watch uses whatever language pack was uploaded via PutBytes (see LanguagePackInstaller).
-enum class WatchLanguage(override val code: UByte, override val displayName: String) : WatchPrefEnum {
-    Custom(0u, "Custom (Language Pack)"),
-    English(1u, "English"),
-}
-
 // How the Timeline Quick View peek is drawn on watchfaces that don't support it. Codes match
 // TimelinePeekUnsupportedFaceMode in pebble-firmware:fw/shell/prefs.h. Only watch models with
 // TIMELINE_PEEK_WATCHFACE_FIT_SUPPORTED honour this; others discard the synced value.
@@ -640,13 +633,6 @@ enum class EnumWatchPref(
         description = "Automatic follows the Imperial Units setting.",
         defaultValue = WindUnits.FromDistance,
         options = WindUnits.entries,
-    ),
-    Language(
-        id = "language",
-        displayName = "Language",
-        description = "Choose Custom to use the installed language pack.",
-        defaultValue = WatchLanguage.Custom,
-        options = WatchLanguage.entries,
     ),
     TimelineQuickViewUnsupportedFaces(
         id = "timelineQuickViewWatchfaceFit",
@@ -857,7 +843,7 @@ enum class ColorWatchPref(
 - heartRatePreferences (see HealthSettingsEntry)
 - spo2Preferences / bloodOxygenPreferences / bloodOxygenActivityPreferences (health toggles - belong with HealthSettingsEntry, not here)
 - workerId (need UI to figure out which apps are eligible)
-- langEnglish (legacy bool, superseded by the `language` enum we already sync)
+- language / langEnglish (holds a per-watch pack slot; set through LanguagePackInstaller instead)
 - textStyle (legacy content size; firmware no longer reads it - superseded by systemTextSize/notifTextSize)
  */
 

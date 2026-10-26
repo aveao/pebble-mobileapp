@@ -171,7 +171,6 @@ fun WatchPref<*>.section(): Section = when (this) {
     RgbColorWatchPref.BacklightColorNight -> Section.Display
     NumberWatchPref.BacklightColorSunriseMinute -> Section.Display
     NumberWatchPref.BacklightColorSunsetMinute -> Section.Display
-    EnumWatchPref.Language -> Section.Display
     EnumWatchPref.WindSpeed -> Section.Weather
 //    ColorWatchPref.SettingsMenuHighlightColor -> Section.Display
 //    ColorWatchPref.AppMenuHighlightColor -> Section.Display

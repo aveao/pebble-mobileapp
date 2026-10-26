@@ -235,6 +235,7 @@ class RealPebbleConnector(
             runningFwVersion = watchInfo.runningFwVersion,
         )
         firmwareUpdateManager.init(watchInfo)
+        languagePackInstaller.init(watchInfo)
         logDumpService.init(watchInfo.capabilities.contains(ProtocolCapsFlag.SupportsInfiniteLogDump))
 
         val ignoreMissingPrfOnThisDevice =

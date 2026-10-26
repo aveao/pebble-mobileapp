@@ -13,6 +13,7 @@ import io.rebble.libpebblecommon.connection.bt.ble.pebble.ReversePpogVersion
 import io.rebble.libpebblecommon.connection.endpointmanager.FirmwareUpdater
 import io.rebble.libpebblecommon.connection.endpointmanager.InstalledLanguagePack
 import io.rebble.libpebblecommon.connection.endpointmanager.LanguagePackInstallState
+import io.rebble.libpebblecommon.connection.endpointmanager.WatchLanguagePack
 import io.rebble.libpebblecommon.connection.endpointmanager.musiccontrol.MusicTrack
 import io.rebble.libpebblecommon.connection.endpointmanager.timeline.CustomTimelineActionHandler
 import io.rebble.libpebblecommon.database.asMillisecond
@@ -816,10 +817,16 @@ class FakeConnectedDevice(
         return ImageBitmap(width, height).apply { readPixels(buffer) }
     }
 
-    override fun installLanguagePack(path: Path, name: String) {
+    override suspend fun setActiveLanguage(pack: WatchLanguagePack?): Boolean = false
+
+    override suspend fun listLanguagePacks(): List<WatchLanguagePack> = emptyList()
+
+    override suspend fun removeLanguagePack(pack: WatchLanguagePack): Boolean = false
+
+    override fun installLanguagePack(path: Path, name: String, activate: Boolean) {
     }
 
-    override fun installLanguagePack(url: String, name: String) {
+    override fun installLanguagePack(url: String, name: String, activate: Boolean) {
     }
 
     override val languagePackInstallState: LanguagePackInstallState =
