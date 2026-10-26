@@ -158,7 +158,6 @@ import coredevices.util.transcription.spokenLanguageLabel
 import dev.gitlive.firebase.Firebase
 import dev.gitlive.firebase.auth.auth
 import dev.gitlive.firebase.crashlytics.crashlytics
-import io.rebble.libpebblecommon.permissions.PermissionPolicy
 import io.rebble.libpebblecommon.connection.AppContext
 import io.rebble.libpebblecommon.connection.ConnectedPebble
 import io.rebble.libpebblecommon.connection.KnownPebbleDevice
@@ -168,6 +167,7 @@ import io.rebble.libpebblecommon.database.entity.QuietTimeSchedule
 import io.rebble.libpebblecommon.js.PKJSApp
 import io.rebble.libpebblecommon.metadata.WatchType
 import io.rebble.libpebblecommon.packets.ProtocolCapsFlag
+import io.rebble.libpebblecommon.permissions.PermissionPolicy
 import io.rebble.libpebblecommon.services.FirmwareVersion
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
@@ -242,6 +242,7 @@ fun Section.navigatesDirectlyTo(): NavBarRoute? = when (this) {
 }
 
 object SettingsIds {
+    const val PermissionPolicy = "PermissionPolicy"
     const val OfflineSpeechRecognition = "OfflineSpeechRecognition"
     const val EnableHealthTracking = "EnableHealthTracking"
     const val EnableActivityInsights = "EnableActivityInsights"
@@ -327,6 +328,21 @@ data class SettingsItemsState(
     val coreConfig: CoreConfig,
     val healthTrackingEnabled: Boolean,
 )
+
+/** Shows the setting with this [SettingsItem.id], as on the settings screen. */
+@Composable
+fun SettingsItemsState?.Show(id: String) {
+    if (this == null) {
+        return
+    }
+    val setting = remember(this) {
+        rawSettingsItems.find { it.id == id }
+    }
+    if (setting == null || !setting.show()) {
+        return
+    }
+    setting.Item()
+}
 
 @Composable
 fun rememberSettingsItemsState(navBarNav: NavBarNav?, snackbarDisplay: SnackbarDisplay): SettingsItemsState? {
@@ -1984,12 +2000,14 @@ fun rememberSettingsItemsState(navBarNav: NavBarNav?, snackbarDisplay: SnackbarD
                     isDebugSetting = true,
                 ),
                 basicSettingsToggleItem(
-                    title = "Use experimental plugins / permissions",
-                    description = "Enable the new plugins API, and new permissions system. This is an experimental feature under development - not recommended unless you know what you are doing (API is unstable)",
+                    title = "Plugins / permissions preview",
+                    description = "Enable Plugins (a new system for apps to share data and actions), and the new granular app permissions system. This will be enabled for everyone in a future release",
                     topLevelType = TopLevelType.Phone,
-                    section = Section.Debug,
+                    section = Section.Apps,
                     checked = libPebbleConfig.watchConfig.enablePlugins,
                     onCheckChanged = {
+                        // So turning them back on shows the permissions introduction again.
+                        if (!it) settings.setHasSeenPermissionsIntro(false)
                         libPebble.updateConfig(
                             libPebbleConfig.copy(
                                 watchConfig = libPebbleConfig.watchConfig.copy(
@@ -1998,16 +2016,11 @@ fun rememberSettingsItemsState(navBarNav: NavBarNav?, snackbarDisplay: SnackbarD
                             )
                         )
                     },
-                    isDebugSetting = true,
                 ),
                 basicSettingsDropdownItem(
+                    id = SettingsIds.PermissionPolicy,
                     title = "Ask before apps use permissions",
-                    description = when (libPebbleConfig.watchConfig.permissionPolicy) {
-                        PermissionPolicy.AskIfExfiltrating ->
-                            "Apps ask before going online or changing anything, and before reading your data if they could send it off your phone."
-                        PermissionPolicy.AlwaysAsk -> "Apps ask before using any permission."
-                        PermissionPolicy.NeverAsk -> "Apps can use any permission you haven't turned off on the app's page."
-                    },
+                    description = libPebbleConfig.watchConfig.permissionPolicy.description(),
                     topLevelType = TopLevelType.Phone,
                     section = Section.Apps,
                     items = PermissionPolicy.entries,
@@ -2019,14 +2032,9 @@ fun rememberSettingsItemsState(navBarNav: NavBarNav?, snackbarDisplay: SnackbarD
                             )
                         )
                     },
-                    itemText = {
-                        when (it) {
-                            PermissionPolicy.AskIfExfiltrating -> "With network access"
-                            PermissionPolicy.AlwaysAsk -> "Always"
-                            PermissionPolicy.NeverAsk -> "Never"
-                        }
-                    },
+                    itemText = { it.displayName() },
                     show = { libPebbleConfig.watchConfig.enablePlugins },
+                    selectorBelow = true,
                 ),
                 basicSettingsToggleItem(
                     title = "Legacy PebbleKit",
@@ -2851,6 +2859,8 @@ fun <T> basicSettingsDropdownItem(
     show: () -> Boolean = { true },
     isDebugSetting: Boolean = false,
     extraSupportingContent: (@Composable () -> Unit)? = null,
+    /** Under the description rather than beside the title, for long values. */
+    selectorBelow: Boolean = false,
 ) = SettingsItem(
     id = id,
     title = title,
@@ -2860,42 +2870,46 @@ fun <T> basicSettingsDropdownItem(
     show = show,
     isDebugSetting = isDebugSetting,
     item = {
+        val selector: @Composable () -> Unit = {
+            var expanded by remember { mutableStateOf(false) }
+            Box {
+                TextButton(onClick = { expanded = true }) {
+                    Text(
+                        text = itemText(selectedItem),
+                        modifier = if (selectorBelow) Modifier else Modifier.widthIn(max = 150.dp),
+                        maxLines = 2,
+                    )
+                }
+                DropdownMenu(
+                    expanded = expanded,
+                    onDismissRequest = { expanded = false }
+                ) {
+                    items.forEach { option ->
+                        DropdownMenuItem(
+                            text = { Text(itemText(option)) },
+                            onClick = {
+                                onItemSelected(option)
+                                expanded = false
+                            }
+                        )
+                    }
+                }
+            }
+        }
         ListItem(
             headlineContent = {
                 Text(title)
             },
-            trailingContent = {
-                var expanded by remember { mutableStateOf(false) }
-                Box {
-                    TextButton(onClick = { expanded = true }) {
-                        Text(
-                            text = itemText(selectedItem),
-                            modifier = Modifier.widthIn(max = 150.dp),
-                            maxLines = 2,
-                        )
-                    }
-                    DropdownMenu(
-                        expanded = expanded,
-                        onDismissRequest = { expanded = false }
-                    ) {
-                        items.forEach { option ->
-                            DropdownMenuItem(
-                                text = { Text(itemText(option)) },
-                                onClick = {
-                                    onItemSelected(option)
-                                    expanded = false
-                                }
-                            )
-                        }
-                    }
-                }
-            },
+            trailingContent = if (selectorBelow) null else selector,
             supportingContent = {
-                Row {
-                    if (description != null) {
-                        Text(description, fontSize = 11.sp)
+                Column {
+                    Row {
+                        if (description != null) {
+                            Text(description, fontSize = 11.sp)
+                        }
+                        extraSupportingContent?.invoke()
                     }
-                    extraSupportingContent?.invoke()
+                    if (selectorBelow) selector()
                 }
             },
             shadowElevation = ELEVATION,
