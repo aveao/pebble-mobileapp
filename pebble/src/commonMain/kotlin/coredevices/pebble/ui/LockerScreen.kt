@@ -94,6 +94,7 @@ import coredevices.pebble.services.AppStoreHomeResult
 import coredevices.pebble.services.PebbleWebServices
 import coredevices.pebble.services.SearchPagingSource
 import coredevices.pebble.services.StoreCategory
+import coredevices.pebble.services.isPebbleFeed
 import coredevices.ui.PebbleElevatedButton
 import io.rebble.libpebblecommon.connection.AppContext
 import io.rebble.libpebblecommon.connection.ConnectedPebbleDevice
@@ -252,6 +253,7 @@ fun LockerScreen(
     Box(modifier = Modifier.background(MaterialTheme.colorScheme.background).imePadding()) {
         val viewModel = koinViewModel<LockerViewModel>()
         val sharedViewModel: SharedLockerViewModel = koinInject()
+        val topChartsViewModel: TopChartsViewModel = koinInject()
         sharedViewModel.Init()
         val scope = rememberCoroutineScope()
         val libPebble = rememberLibPebble()
@@ -440,6 +442,7 @@ fun LockerScreen(
                     }
                 } else {
                     PullToRefreshBox(isRefreshing = viewModel.storeIsRefreshing || viewModel.lockerIsRefreshing, onRefresh = {
+                        topChartsViewModel.clear()
                         viewModel.startLockerRefresh(libPebble, sharedViewModel.watchType.value)
                     }) {
                         val active = when (viewModel.type.value) {
@@ -629,6 +632,16 @@ fun LockerScreen(
                                                 contentDescription = "Configure Feeds"
                                             )
                                         }
+                                    }
+                                }
+                                if (source.isPebbleFeed()) {
+                                    item(contentType = "top_charts", key = "top_charts_${source.id}") {
+                                        TopChartsSection(
+                                            source = source,
+                                            type = viewModel.type.value,
+                                            navBarNav = navBarNav,
+                                            topBarParams = topBarParams,
+                                        )
                                     }
                                 }
                                 if (viewModel.type.value == AppType.Watchapp) {

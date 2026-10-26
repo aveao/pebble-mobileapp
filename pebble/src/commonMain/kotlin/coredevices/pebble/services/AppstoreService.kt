@@ -360,7 +360,7 @@ class AppstoreService(
 //            set("firmware_version", "")
             set("filter_hardware", "true")
         }
-        val cachedHome = if (useCache) cache.readHome(type, source, parameters) else null
+        val cachedHome = if (useCache) cache.readHome(type, source, parameters)?.withoutHiddenCollections() else null
         val rawHome: AppStoreHome? = cachedHome ?: try {
             logger.v { "fetchAppStoreHome fetching ${source.url}/v1/home/$typeString" }
             val fetched = httpClient.get(
@@ -378,7 +378,7 @@ class AppstoreService(
                     } else {
                         true
                     }
-                }?.body<AppStoreHome>()
+                }?.body<AppStoreHome>()?.withoutHiddenCollections()
             fetched?.let {
                 cache.writeCategories(fetched.categories, type, source)
                 appstoreCollectionDao.updateListOfCollections(type, fetched.collections.map {
@@ -428,6 +428,10 @@ class AppstoreService(
         return cleaned?.let { augmentHomeWithHearted(it, type) }
     }
 
+    /** Top Charts replaces Most Loved on our store. */
+    private fun AppStoreHome.withoutHiddenCollections(): AppStoreHome =
+        if (source.isPebbleFeed()) copy(collections = collections.filter { it.slug != "most-loved" }) else this
+
     private suspend fun augmentHomeWithHearted(home: AppStoreHome, type: AppType): AppStoreHome {
         val dbRows = appstoreCollectionDao.getAllCollections()
             .filter { it.sourceId == source.id && it.type == type }
@@ -475,6 +479,7 @@ class AppstoreService(
         path: String,
         appType: AppType?,
         hardwarePlatform: WatchType,
+        extraParameters: Map<String, String> = emptyMap(),
     ): PagingSource<Int, CommonApp> {
         // Synthetic "Hearted" collection: served entirely from local hearts + per-app
         // metadata fetch, transparent to callers.
@@ -489,6 +494,7 @@ class AppstoreService(
                     put("hardware", hardwarePlatform.codename)
                     put("offset", offset.toString())
                     put("limit", params.loadSize)
+                    putAll(extraParameters)
                 }
                 val url = buildString {
                     append("${source.url}/v1/apps/$path")
@@ -548,8 +554,9 @@ class AppstoreService(
         appType: AppType?,
         hardwarePlatform: WatchType,
         limit: Int,
+        extraParameters: Map<String, String> = emptyMap(),
     ): List<CommonApp>? {
-        val result = fetchAppStoreCollection(path, appType, hardwarePlatform)
+        val result = fetchAppStoreCollection(path, appType, hardwarePlatform, extraParameters)
             .load(PagingSource.LoadParams.Refresh(key = null, loadSize = limit, placeholdersEnabled = false))
         return (result as? PagingSource.LoadResult.Page)?.data
     }

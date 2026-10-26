@@ -56,6 +56,7 @@ import coredevices.pebble.ui.NotificationAppScreenViewModel
 import coredevices.pebble.ui.NotificationAppsScreenViewModel
 import coredevices.pebble.ui.NotificationScreenViewModel
 import coredevices.pebble.ui.SharedLockerViewModel
+import coredevices.pebble.ui.TopChartsViewModel
 import coredevices.pebble.ui.HealthViewModel
 import coredevices.pebble.ui.WatchHomeViewModel
 import coredevices.pebble.ui.WatchOnboardingFinished
@@ -274,6 +275,7 @@ val watchModule = module {
     viewModelOf(::NotificationAppsScreenViewModel)
     viewModelOf(::LockerViewModel)
     singleOf(::SharedLockerViewModel)
+    singleOf(::TopChartsViewModel)
     viewModelOf(::LockerAppViewModel)
     viewModelOf(::AppstoreSettingsScreenViewModel)
     viewModelOf(::ContactsViewModel)

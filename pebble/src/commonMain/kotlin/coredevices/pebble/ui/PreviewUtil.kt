@@ -265,6 +265,7 @@ private fun fakePebbleModule(appContext: AppContext) = module {
     }
     single { LockerViewModel(webServices, storeSourceDao) }
     single { SharedLockerViewModel() }
+    single { TopChartsViewModel(storeSourceDao) }
     single { storeSourceDao } bind AppstoreSourceDao::class
     single { configProvider } bind BootConfigProvider::class
     single { FakeLibPebble() } binds arrayOf(LibPebble::class, NotificationApps::class)

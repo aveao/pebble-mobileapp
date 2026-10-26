@@ -115,6 +115,9 @@ object PebbleNavBarRoutes {
     data class MyCollectionRoute(val appType: String) : NavBarRoute
 
     @Serializable
+    data class TopChartsRoute(val sourceId: Int, val appType: String) : NavBarRoute
+
+    @Serializable
     data object OfflineModelsRoute : NavBarRoute
 
     @Serializable
@@ -242,6 +245,15 @@ fun NavGraphBuilder.addNavBarRoutes(
             path = route.path,
             title = route.title,
             appType = route.appType?.let { AppType.fromString(it) },
+        )
+    }
+    composableWithAnimations<PebbleNavBarRoutes.TopChartsRoute>(viewModel) {
+        val route: PebbleNavBarRoutes.TopChartsRoute = it.toRoute()
+        TopChartsScreen(
+            navBarNav = nav,
+            topBarParams = topBarParams,
+            sourceId = route.sourceId,
+            type = AppType.fromString(route.appType) ?: AppType.Watchface,
         )
     }
     composableWithAnimations<PebbleNavBarRoutes.MyCollectionRoute>(viewModel) {
