@@ -275,11 +275,12 @@ fun AppPermissionsSection(appUuid: Uuid) {
     val config by libPebble.config.collectAsState()
     if (!config.watchConfig.enablePlugins) return
     val defined = rememberPluginPermissions()
-    val known by remember(appUuid) {
-        libPebble.appPermissionStatuses(appUuid).map { all -> all?.sortedBy { it.status != PermissionStatus.Waiting } }
-    }.collectAsState(emptyList())
+    // Null while loading.
+    val loaded by remember(appUuid) {
+        libPebble.appPermissionStatuses(appUuid).map { all -> LoadedStatuses(all?.sortedBy { it.status != PermissionStatus.Waiting }) }
+    }.collectAsState(null)
     // Leaving the page stops asking about anything still waiting.
-    val current by rememberUpdatedState(known)
+    val current by rememberUpdatedState(loaded?.statuses)
     DisposableEffect(appUuid) {
         onDispose {
             val unanswered = current.orEmpty().filter { it.status == PermissionStatus.Waiting }.map { it.permission }
@@ -292,18 +293,19 @@ fun AppPermissionsSection(appUuid: Uuid) {
         libPebble.getLockerApp(appUuid).map { it?.properties?.legacy == true }
     }.collectAsState(false)
     var expanded by remember(appUuid) { mutableStateOf(false) }
-    val statuses = known ?: run {
+    val statuses = (loaded ?: return).statuses
+    if (statuses.isNullOrEmpty()) {
         Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
             Text("Permissions", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(bottom = 4.dp))
             Text(
-                "Shown once the app has been installed on your watch.",
+                if (statuses == null) "Shown once the app has been installed on your watch."
+                else "This app doesn't use any permissions.",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
         return
     }
-    if (statuses.isEmpty()) return
     val scope = rememberCoroutineScope()
     Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
         if (legacy) {
@@ -370,6 +372,9 @@ fun AppPermissionsSection(appUuid: Uuid) {
         }
     }
 }
+
+/** [statuses] is null until the app's permissions are known. */
+private class LoadedStatuses(val statuses: List<AppPermissionStatus>?)
 
 /** Whether the bare file permission reads as denied, with `WriteFiles` standing in for a `ReadFiles` the app never declared. */
 private fun List<AppPermissionStatus>.deniesBareFilePermission(bare: String): Boolean {
