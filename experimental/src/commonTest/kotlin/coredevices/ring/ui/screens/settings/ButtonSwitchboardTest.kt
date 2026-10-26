@@ -24,14 +24,24 @@ class ButtonSwitchboardTest {
     }
 
     @Test
-    fun musicGesturesOfferPlayPauseNextTrackAndNothing() {
+    fun musicGesturesOfferPlayPauseNextTrackAgentCommandWebhookAndNothing() {
         assertEquals(
             listOf(
                 GestureDestination.PlayPause,
                 GestureDestination.NextTrack,
+                GestureDestination.AgentCommand,
+                GestureDestination.Webhook,
                 GestureDestination.Nothing,
             ),
             destinationsFor(GestureKind.Music),
+        )
+    }
+
+    @Test
+    fun clicksStillReachTheAgentAndWebhookWithoutMusicControl() {
+        assertEquals(
+            listOf(GestureDestination.AgentCommand, GestureDestination.Webhook, GestureDestination.Nothing),
+            destinationsFor(GestureKind.Music, musicControl = false),
         )
     }
 
@@ -124,10 +134,14 @@ class ButtonSwitchboardTest {
     }
 
     @Test
-    fun aMusicChoiceIsTheWholeInteraction() {
+    fun aMusicChoiceIsTheWholeInteractionExceptWebhookAndAgentCommand() {
         RingGesture.entries.filter { it.kind == GestureKind.Music }.forEach { gesture ->
             destinationsFor(GestureKind.Music).forEach {
-                assertFalse(gestureSheetStaysOpenFor(gesture, it), "$gesture / $it stays open")
+                assertEquals(
+                    it == GestureDestination.Webhook || it == GestureDestination.AgentCommand,
+                    gestureSheetStaysOpenFor(gesture, it),
+                    "$gesture / $it",
+                )
             }
         }
     }

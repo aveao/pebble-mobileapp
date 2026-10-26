@@ -18,6 +18,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.Block
+import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.GraphicEq
@@ -30,6 +31,7 @@ import androidx.compose.material.icons.filled.Webhook
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -51,6 +53,7 @@ import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -92,14 +95,18 @@ data class AgentPluginOption(val provider: IntegrationProvider, val connected: B
 
 fun List<AgentPluginOption>.titles(): Map<String, String> = associate { it.provider.id to it.provider.title }
 
-/** [agentPlugins] are the installed agent plugins, offered after the Index agents. */
+/** [agentPlugins] are the installed agent plugins, offered after the Index agents. [musicControl] is
+ *  false where the platform can't control media; clicks can still go to a webhook or agent command. */
 fun destinationsFor(
     kind: GestureKind,
     agentPlugins: List<GestureDestination.AgentPlugin> = emptyList(),
+    musicControl: Boolean = true,
 ): List<GestureDestination> = when (kind) {
-    GestureKind.Music -> listOf(
-        GestureDestination.PlayPause,
-        GestureDestination.NextTrack,
+    GestureKind.Music -> listOfNotNull(
+        GestureDestination.PlayPause.takeIf { musicControl },
+        GestureDestination.NextTrack.takeIf { musicControl },
+        GestureDestination.AgentCommand,
+        GestureDestination.Webhook,
         GestureDestination.Nothing,
     )
     GestureKind.Recording -> listOf(
@@ -118,7 +125,9 @@ fun destinationsFor(
 internal fun gestureSheetStaysOpenFor(
     gesture: RingGesture,
     destination: GestureDestination,
-): Boolean = gesture.kind == GestureKind.Recording && destination != GestureDestination.Nothing
+): Boolean = destination == GestureDestination.Webhook ||
+    destination == GestureDestination.AgentCommand ||
+    (gesture.kind == GestureKind.Recording && destination != GestureDestination.Nothing)
 
 /** [agentTitles] names agent plugins by provider id; a route to one no longer installed reads as unavailable. */
 fun GestureDestination.tileLabel(agentTitles: Map<String, String>): String = when (this) {
@@ -128,6 +137,8 @@ fun GestureDestination.tileLabel(agentTitles: Map<String, String>): String = whe
     GestureDestination.LocalAgent -> "Local agent"
     GestureDestination.WebSearch -> "Web search"
     GestureDestination.WebhookOnly -> "Webhook only"
+    GestureDestination.Webhook -> "Webhook"
+    GestureDestination.AgentCommand -> "Agent command"
     is GestureDestination.AgentPlugin -> agentTitles[providerId] ?: "Unavailable agent"
     GestureDestination.Nothing -> "Nothing"
 }
@@ -137,6 +148,8 @@ val GestureDestination.tileLabel: String get() = tileLabel(emptyMap())
 private fun GestureDestination.optionLabel(agentTitles: Map<String, String>): String = when (this) {
     GestureDestination.PlayPause -> "Play or pause music"
     GestureDestination.NextTrack -> "Skip to the next track"
+    GestureDestination.Webhook -> "Send to webhook"
+    GestureDestination.AgentCommand -> "Run an Index agent command"
     else -> tileLabel(agentTitles)
 }
 
@@ -147,6 +160,8 @@ private val GestureDestination.optionSub: String?
         GestureDestination.WebSearch -> "Answer lands in your feed"
         GestureDestination.WebhookOnly -> "Raw recording to your endpoint, nothing else"
         is GestureDestination.AgentPlugin -> "What you say goes straight to this agent"
+        GestureDestination.Webhook -> "Click count and your payload to your endpoint"
+        GestureDestination.AgentCommand -> "Sends a command, eg \"Unlock front door\""
         else -> null
     }
 
@@ -157,7 +172,8 @@ private val GestureDestination.icon: ImageVector
         GestureDestination.IndexAgent -> Icons.Default.GraphicEq
         GestureDestination.LocalAgent -> Icons.Default.Smartphone
         GestureDestination.WebSearch -> Icons.Default.Search
-        GestureDestination.WebhookOnly -> Icons.Default.Webhook
+        GestureDestination.WebhookOnly, GestureDestination.Webhook -> Icons.Default.Webhook
+        GestureDestination.AgentCommand -> Icons.Default.Bolt
         is GestureDestination.AgentPlugin -> Icons.AutoMirrored.Filled.Send
         GestureDestination.Nothing -> Icons.Default.Block
     }
@@ -165,9 +181,11 @@ private val GestureDestination.icon: ImageVector
 @Composable
 internal fun ButtonSwitchboard(
     routes: Map<RingGesture, GestureDestination>,
+    commands: Map<RingGesture, String>,
     musicEnabled: Boolean,
     webhookConfigFor: (RingGesture) -> IndexWebhookConfig,
     onSetRoute: (RingGesture, GestureDestination) -> Unit,
+    onSetCommand: (RingGesture, String) -> Unit,
     onOpenWebhookSettings: (RingGesture) -> Unit,
     onDisableWebhook: (RingGesture) -> Unit,
     agentPlugins: List<AgentPluginOption> = emptyList(),
@@ -183,13 +201,15 @@ internal fun ButtonSwitchboard(
     ) {
         RingGesture.entries.forEach { gesture ->
             val destination = routes[gesture] ?: GestureDestination.Nothing
-            val enabled = musicEnabled || gesture.kind == GestureKind.Recording
-            Column(modifier = Modifier.alpha(if (enabled) 1f else 0.38f)) {
+            val inert = !musicEnabled && destination is GestureDestination.Music &&
+                destination != GestureDestination.Webhook &&
+                destination != GestureDestination.AgentCommand
+            Column(modifier = Modifier.alpha(if (inert) 0.38f else 1f)) {
                 GestureRow(
                     gesture = gesture,
                     destination = destination,
                     agentTitles = agentTitles,
-                    enabled = enabled,
+                    command = commands[gesture].orEmpty(),
                     onEdit = { sheetGesture = gesture },
                 )
                 if (gesture.kind == GestureKind.Recording &&
@@ -208,6 +228,9 @@ internal fun ButtonSwitchboard(
             gesture = gesture,
             current = routes[gesture] ?: GestureDestination.Nothing,
             agentPlugins = agentPlugins,
+            musicControl = musicEnabled,
+            command = commands[gesture].orEmpty(),
+            onSetCommand = { onSetCommand(gesture, it) },
             webhookUrl = webhookConfigFor(gesture).takeIf { it.isActive }?.url,
             webhookCopyOn = webhookCopies(gesture),
             onSelect = {
@@ -240,7 +263,7 @@ private fun GestureRow(
     gesture: RingGesture,
     destination: GestureDestination,
     agentTitles: Map<String, String>,
-    enabled: Boolean,
+    command: String,
     onEdit: () -> Unit,
 ) {
     val recording = gesture.kind == GestureKind.Recording
@@ -291,7 +314,7 @@ private fun GestureRow(
                         color = if (isIndexAgent) accent else colors.outlineVariant,
                         shape = TILE_SHAPE,
                     )
-                    .clickable(enabled = enabled, onClick = onEdit)
+                    .clickable(onClick = onEdit)
                     .padding(horizontal = 12.dp, vertical = 9.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -303,8 +326,12 @@ private fun GestureRow(
                     modifier = Modifier.size(18.dp),
                 )
                 Text(
-                    destination.tileLabel(agentTitles),
+                    command.trim().takeIf { destination == GestureDestination.AgentCommand && it.isNotEmpty() }
+                        ?.let { "“$it”" }
+                        ?: destination.tileLabel(agentTitles),
                     fontSize = 13.sp,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                     fontWeight = if (isIndexAgent) FontWeight.Medium else FontWeight.Normal,
                     color = colors.onSurface,
                 )
@@ -377,6 +404,9 @@ private fun GestureDestinationSheet(
     gesture: RingGesture,
     current: GestureDestination,
     agentPlugins: List<AgentPluginOption>,
+    musicControl: Boolean,
+    command: String,
+    onSetCommand: (String) -> Unit,
     webhookUrl: String?,
     webhookCopyOn: Boolean,
     onSelect: (GestureDestination) -> Unit,
@@ -386,8 +416,13 @@ private fun GestureDestinationSheet(
     onDismiss: () -> Unit,
 ) {
     val colors = IndexTheme.colors
+    var commandDraft by remember(command) { mutableStateOf(command) }
+    val commitCommand = { if (commandDraft != command) onSetCommand(commandDraft) }
     ModalBottomSheet(
-        onDismissRequest = onDismiss,
+        onDismissRequest = {
+            commitCommand()
+            onDismiss()
+        },
         sheetState = rememberModalBottomSheetState(),
         containerColor = colors.sheetSurface,
     ) {
@@ -411,7 +446,7 @@ private fun GestureDestinationSheet(
         val agentTitles = agentPlugins.titles()
         val unconnected = agentPlugins.filterNot { it.connected }.associateBy { it.destination }
         // A route to a plugin that has since been uninstalled stays listed so it can be changed.
-        val options = destinationsFor(gesture.kind, agentPlugins.map { it.destination }).let {
+        val options = destinationsFor(gesture.kind, agentPlugins.map { it.destination }, musicControl).let {
             if (current is GestureDestination.AgentPlugin && current !in it) it + current else it
         }
         options.forEach { option ->
@@ -421,10 +456,30 @@ private fun GestureDestinationSheet(
                 agentTitles = agentTitles,
                 subtitle = if (plugin != null) "Not connected" else option.optionSub,
                 selected = option == current,
-                onClick = { if (plugin != null) onConnectAgentPlugin(plugin.provider) else onSelect(option) },
+                onClick = {
+                    commitCommand()
+                    if (plugin != null) onConnectAgentPlugin(plugin.provider) else onSelect(option)
+                },
                 trailing = if (plugin == null) null else {
                     { TextButton(onClick = { onConnectAgentPlugin(plugin.provider) }) { Text("Connect") } }
                 },
+            )
+        }
+        if (current == GestureDestination.AgentCommand) {
+            OutlinedTextField(
+                value = commandDraft,
+                onValueChange = { commandDraft = it },
+                singleLine = true,
+                label = { Text("Command") },
+                placeholder = { Text("Unlock front door") },
+                supportingText = {
+                    Text(
+                        "Runs as if you'd said it to Index, using your plugins and actions. " +
+                            "For example: \"Unlock front door\", \"Turn off the living room lights\" " +
+                            "or \"Start a 25 minute timer\""
+                    )
+                },
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp),
             )
         }
         if (gesture.kind == GestureKind.Recording &&
@@ -444,8 +499,9 @@ private fun GestureDestinationSheet(
                 Switch(checked = webhookCopyOn, onCheckedChange = onSetWebhookCopy)
             }
         }
-        if (gesture.kind == GestureKind.Recording &&
-            (current == GestureDestination.WebhookOnly || webhookCopyOn)
+        if (current == GestureDestination.Webhook ||
+            (gesture.kind == GestureKind.Recording &&
+                (current == GestureDestination.WebhookOnly || webhookCopyOn))
         ) {
             WebhookSheetRow(
                 icon = Icons.Default.SettingsEthernet,

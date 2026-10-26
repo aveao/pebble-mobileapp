@@ -33,6 +33,7 @@ class RingButtonViewModel(
     pluginsEnabled: StateFlow<Boolean>,
 ) : ViewModel() {
     val gestureRoutes = gestureRouting.routes
+    val gestureCommands = gestureRouting.commands
     val webhookConfigs = webhookPreferences.configs
     val musicEnabled: Boolean = platform.isAndroid
 
@@ -60,6 +61,10 @@ class RingButtonViewModel(
             // Trigger LM model extraction, should be already integrated into assets so no DL
             appScope.launch { cactusModelProvider.getLMModelPath() }
         }
+    }
+
+    fun setGestureCommand(gesture: RingGesture, command: String) {
+        gestureRouting.setCommand(gesture, command)
     }
 
     fun disableWebhook(gesture: RingGesture) {

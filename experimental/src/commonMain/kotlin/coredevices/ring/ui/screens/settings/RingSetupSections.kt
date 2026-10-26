@@ -26,6 +26,7 @@ import org.koin.compose.viewmodel.koinViewModel
 fun RingButtonSection(coreNav: CoreNav, viewModel: RingButtonViewModel = koinViewModel()) {
     val webhookViewModel = koinViewModel<IndexWebhookSettingsViewModel>()
     val gestureRoutes by viewModel.gestureRoutes.collectAsState()
+    val gestureCommands by viewModel.gestureCommands.collectAsState()
     val webhookConfigs by viewModel.webhookConfigs.collectAsState()
     val agentProviders by viewModel.agentProviders.collectAsState()
     val connectedAgentProviders by viewModel.connectedAgentProviders.collectAsState()
@@ -34,9 +35,11 @@ fun RingButtonSection(coreNav: CoreNav, viewModel: RingButtonViewModel = koinVie
     LaunchedEffect(Unit) { viewModel.refreshAgentDestinations() }
     ButtonSwitchboard(
         routes = gestureRoutes,
+        commands = gestureCommands,
         musicEnabled = viewModel.musicEnabled,
         webhookConfigFor = { webhookConfigs[it] ?: IndexWebhookConfig() },
         onSetRoute = viewModel::setGestureRoute,
+        onSetCommand = viewModel::setGestureCommand,
         onOpenWebhookSettings = { webhookViewModel.openDialog(it) },
         onDisableWebhook = viewModel::disableWebhook,
         agentPlugins = agentPlugins,

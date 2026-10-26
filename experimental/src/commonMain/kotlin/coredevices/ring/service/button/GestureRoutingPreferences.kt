@@ -16,6 +16,7 @@ class GestureRoutingPreferences(
 ) {
     companion object {
         private const val KEY_PREFIX = "ring_gesture_route_"
+        private const val COMMAND_KEY_PREFIX = "ring_gesture_command_"
         private const val LEGACY_LLM_MODE_KEY = "llm_mode"
         private const val LEGACY_LLM_MODE_LOCAL_ONLY = 1
         private const val LEGACY_LOCAL_LLM_SWITCH_KEY = "use_cactus_agent"
@@ -30,6 +31,19 @@ class GestureRoutingPreferences(
         )
     )
     val routes = _routes.asStateFlow()
+
+    private val _commands = MutableStateFlow(
+        RingGesture.entries.associateWith { settings.getString(COMMAND_KEY_PREFIX + it.name, "") }
+    )
+    /** Text a gesture routed to [GestureDestination.AgentCommand] sends to the agent. */
+    val commands = _commands.asStateFlow()
+
+    fun commandFor(gesture: RingGesture): String = _commands.value[gesture].orEmpty()
+
+    fun setCommand(gesture: RingGesture, command: String) {
+        settings.putString(COMMAND_KEY_PREFIX + gesture.name, command)
+        _commands.value = _commands.value + (gesture to command)
+    }
 
     fun destinationFor(gesture: RingGesture): GestureDestination =
         _routes.value[gesture] ?: GestureDestination.Nothing
@@ -103,6 +117,8 @@ private fun GestureDestination.encode(): String = when (this) {
     GestureDestination.WebSearch -> "web_search"
     GestureDestination.WebhookOnly -> "webhook_only"
     is GestureDestination.AgentPlugin -> AGENT_PLUGIN_PREFIX + providerId
+    GestureDestination.Webhook -> "webhook"
+    GestureDestination.AgentCommand -> "agent_command"
     GestureDestination.Nothing -> "nothing"
 }
 
@@ -116,6 +132,8 @@ private fun decodeDestination(raw: String): GestureDestination? = when {
     raw == "webhook_only" -> GestureDestination.WebhookOnly
     raw.startsWith(AGENT_PLUGIN_PREFIX) ->
         raw.removePrefix(AGENT_PLUGIN_PREFIX).takeIf { it.isNotBlank() }?.let { GestureDestination.AgentPlugin(it) }
+    raw == "webhook" -> GestureDestination.Webhook
+    raw == "agent_command" -> GestureDestination.AgentCommand
     raw == "nothing" -> GestureDestination.Nothing
     else -> null
 }

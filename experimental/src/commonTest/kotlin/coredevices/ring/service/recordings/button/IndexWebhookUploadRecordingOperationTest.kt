@@ -175,12 +175,15 @@ private class FakeWebhookApi : IndexWebhookApi {
         calls += Call(samplesNull = samples == null, transcription = transcription)
     }
 
+    override fun sendButtonEventIfEnabled(gesture: RingGesture, pressedAt: Instant) = Unit
+
     override suspend fun sendTestEvent(
         gesture: RingGesture,
         url: String,
         headers: Map<String, String>,
         signRequests: Boolean,
         signingSecret: String?,
+        clickPayload: String,
     ) = throw NotImplementedError("unused")
 }
 
