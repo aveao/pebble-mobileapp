@@ -23,6 +23,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Chat
 import androidx.compose.material.icons.automirrored.filled.OpenInNew
+import androidx.compose.material.icons.automirrored.filled.Reply
 import androidx.compose.material.icons.filled.Alarm
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CalendarMonth
@@ -86,6 +87,7 @@ import coredevices.ring.agent.NOT_CONNECTED_REASON
 import coredevices.ring.agent.builtin_servlets.calendar.CalendarServlet
 import coredevices.ring.agent.builtin_servlets.clock.ClockServlet
 import coredevices.ring.agent.builtin_servlets.messaging.MessagingServlet
+import coredevices.ring.agent.builtin_servlets.notifications.NotificationReplyServlet
 import coredevices.ring.agent.builtin_servlets.notes.NoteServlet
 import coredevices.ring.agent.builtin_servlets.reminders.ReminderServlet
 import coredevices.ring.agent.integrations.providers.BuiltInIntegrationProviders
@@ -219,6 +221,11 @@ private fun presentationFor(action: IndexAction): ActionPresentation = when (act
         Icons.AutoMirrored.Filled.Chat,
         "Beeper Messaging",
         "“Tell Jake I’m running late” → message to an approved contact",
+    )
+    NotificationReplyServlet.NAME -> ActionPresentation(
+        Icons.AutoMirrored.Filled.Reply,
+        "Reply to Notifications",
+        "“Reply on my way” → reply to the notification on your Pebble watch",
     )
     else -> ActionPresentation(Icons.Default.Power, action.title, "")
 }

@@ -96,6 +96,7 @@ import org.koin.core.Koin
 import kotlin.concurrent.atomics.AtomicBoolean
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
+import kotlin.time.Instant
 import kotlin.uuid.Uuid
 
 data class PhoneCapabilities(val capabilities: Set<ProtocolCapsFlag>)
@@ -112,7 +113,7 @@ sealed class PebbleConnectionEvent {
 interface LibPebble : Scanning, RequestSync, LockerApi, NotificationApps, CallManagement, Calendar,
     OtherPebbleApps, PKJSToken, Watches, Errors, Contacts, AnalyticsEvents, HealthApi, WatchPrefs,
     SystemGeolocation, Timeline, Vibrations, Weather, HealthDataApi, Plugins, AppPermissionsApi,
-    PluginFileAccessApi {
+    PluginFileAccessApi, NotificationReplies {
     fun init()
 
     val config: StateFlow<LibPebbleConfig>
@@ -279,6 +280,18 @@ interface Plugins {
     companion object {
         val DEFAULT_READ_TIMEOUT = 10.seconds
     }
+}
+
+interface NotificationReplies {
+    suspend fun replyToDisplayedNotification(text: String, at: Instant): DisplayedNotificationReplyResult
+}
+
+sealed interface DisplayedNotificationReplyResult {
+    data class Sent(val title: String?) : DisplayedNotificationReplyResult
+    data object NoNotificationDisplayed : DisplayedNotificationReplyResult
+    data object NotReplyable : DisplayedNotificationReplyResult
+    data object Failed : DisplayedNotificationReplyResult
+    data object Unsupported : DisplayedNotificationReplyResult
 }
 
 interface Timeline {
@@ -509,6 +522,7 @@ class LibPebble3(
     private val appPermissions: AppPermissions,
     pluginClient: PluginClient,
     pluginFileAccess: PluginFileAccess,
+    private val notificationReplies: NotificationReplies,
 ) : LibPebble, Scanning by scanning, RequestSync by webSyncManager, LockerApi by locker,
     NotificationApps by notificationApi, Calendar by phoneCalendarSyncer,
     OtherPebbleApps by otherPebbleApps, PKJSToken by jsTokenUtil, Watches by watchManager,
@@ -516,7 +530,8 @@ class LibPebble3(
     HealthApi by health, SystemGeolocation by systemGeolocation, Timeline by timeline,
     Vibrations by notificationApi, WatchPrefs by watchPreferences, Weather by weatherManager,
     HealthDataApi by health, Plugins by pluginClient,
-    AppPermissionsApi by appPermissions, PluginFileAccessApi by pluginFileAccess {
+    AppPermissionsApi by appPermissions, PluginFileAccessApi by pluginFileAccess,
+    NotificationReplies by notificationReplies {
     private val logger = Logger.withTag("LibPebble3")
     private val initialized = AtomicBoolean(false)
 

@@ -129,6 +129,9 @@ class FakeLibPebble : LibPebble {
         // No-op
     }
 
+    override suspend fun replyToDisplayedNotification(text: String, at: Instant) =
+        DisplayedNotificationReplyResult.Unsupported
+
     override suspend fun sendPing(cookie: UInt) {
         // No-op
     }

@@ -228,6 +228,7 @@ open class TimelineAction(message: Message) : PebblePacket(endpoint) {
 
     enum class Message(val value: UByte) {
         InvokeAction(0x02u),
+        DisplayedItem(0x04u),
         ActionResponse(0x11u)
     }
 
@@ -248,6 +249,10 @@ open class TimelineAction(message: Message) : PebblePacket(endpoint) {
         }
     }
 
+    class DisplayedItem(itemID: Uuid = NOTHING_DISPLAYED) : TimelineAction(Message.DisplayedItem) {
+        val itemID = SUUID(m, itemID)
+    }
+
     class ActionResponse(
         itemID: Uuid = Uuid.NIL,
         response: UByte = 0u,
@@ -263,6 +268,7 @@ open class TimelineAction(message: Message) : PebblePacket(endpoint) {
 
     companion object {
         val endpoint = ProtocolEndpoint.TIMELINE_ACTIONS
+        val NOTHING_DISPLAYED = Uuid.fromByteArray(ByteArray(16) { 0xFF.toByte() })
     }
 }
 
@@ -324,6 +330,10 @@ fun timelinePacketsRegister() {
         TimelineAction.endpoint,
         TimelineAction.Message.InvokeAction.value
     ) { TimelineAction.InvokeAction() }
+    PacketRegistry.register(
+        TimelineAction.endpoint,
+        TimelineAction.Message.DisplayedItem.value
+    ) { TimelineAction.DisplayedItem() }
     PacketRegistry.register(
         TimelineAction.endpoint,
         TimelineAction.Message.ActionResponse.value
