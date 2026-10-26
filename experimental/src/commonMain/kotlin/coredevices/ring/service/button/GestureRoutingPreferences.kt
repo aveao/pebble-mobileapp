@@ -112,6 +112,7 @@ private const val AGENT_PLUGIN_PREFIX = "agent_plugin:"
 private fun GestureDestination.encode(): String = when (this) {
     GestureDestination.PlayPause -> "play_pause"
     GestureDestination.NextTrack -> "next_track"
+    GestureDestination.PreviousTrack -> "previous_track"
     GestureDestination.IndexAgent -> "index_agent"
     GestureDestination.LocalAgent -> "local_agent"
     GestureDestination.WebSearch -> "web_search"
@@ -126,6 +127,7 @@ private fun decodeDestination(raw: String): GestureDestination? = when {
     raw.startsWith(LEGACY_SANDBOX_PREFIX) || raw == LEGACY_REMOTE_AGENT -> GestureDestination.IndexAgent
     raw == "play_pause" -> GestureDestination.PlayPause
     raw == "next_track" -> GestureDestination.NextTrack
+    raw == "previous_track" -> GestureDestination.PreviousTrack
     raw == "index_agent" -> GestureDestination.IndexAgent
     raw == "local_agent" -> GestureDestination.LocalAgent
     raw == "web_search" -> GestureDestination.WebSearch

@@ -26,6 +26,7 @@ import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.SettingsEthernet
 import androidx.compose.material.icons.filled.SkipNext
+import androidx.compose.material.icons.filled.SkipPrevious
 import androidx.compose.material.icons.filled.Smartphone
 import androidx.compose.material.icons.filled.Webhook
 import androidx.compose.material3.HorizontalDivider
@@ -105,6 +106,7 @@ fun destinationsFor(
     GestureKind.Music -> listOfNotNull(
         GestureDestination.PlayPause.takeIf { musicControl },
         GestureDestination.NextTrack.takeIf { musicControl },
+        GestureDestination.PreviousTrack.takeIf { musicControl },
         GestureDestination.AgentCommand,
         GestureDestination.Webhook,
         GestureDestination.Nothing,
@@ -133,6 +135,7 @@ internal fun gestureSheetStaysOpenFor(
 fun GestureDestination.tileLabel(agentTitles: Map<String, String>): String = when (this) {
     GestureDestination.PlayPause -> "Play/Pause"
     GestureDestination.NextTrack -> "Next track"
+    GestureDestination.PreviousTrack -> "Previous track"
     GestureDestination.IndexAgent -> "Index agent"
     GestureDestination.LocalAgent -> "Local agent"
     GestureDestination.WebSearch -> "Web search"
@@ -150,6 +153,7 @@ private fun GestureDestination.optionLabel(agentTitles: Map<String, String>): St
     GestureDestination.NextTrack -> "Skip to the next track"
     GestureDestination.Webhook -> "Send to webhook"
     GestureDestination.AgentCommand -> "Run an Index agent command"
+    GestureDestination.PreviousTrack -> "Go back to the last track"
     else -> tileLabel(agentTitles)
 }
 
@@ -169,6 +173,7 @@ private val GestureDestination.icon: ImageVector
     get() = when (this) {
         GestureDestination.PlayPause -> Icons.Default.PlayArrow
         GestureDestination.NextTrack -> Icons.Default.SkipNext
+        GestureDestination.PreviousTrack -> Icons.Default.SkipPrevious
         GestureDestination.IndexAgent -> Icons.Default.GraphicEq
         GestureDestination.LocalAgent -> Icons.Default.Smartphone
         GestureDestination.WebSearch -> Icons.Default.Search

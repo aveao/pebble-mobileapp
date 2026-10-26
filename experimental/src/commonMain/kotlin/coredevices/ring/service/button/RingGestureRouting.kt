@@ -29,6 +29,7 @@ sealed interface GestureDestination {
 
     data object PlayPause : Music
     data object NextTrack : Music
+    data object PreviousTrack : Music
     /** Cloud agent, falling back to the on-device one when the cloud can't be reached and the
      *  phone supports it. */
     data object IndexAgent : Recording

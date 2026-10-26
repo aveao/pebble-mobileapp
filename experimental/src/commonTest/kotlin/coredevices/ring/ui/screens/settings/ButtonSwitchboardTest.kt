@@ -24,11 +24,12 @@ class ButtonSwitchboardTest {
     }
 
     @Test
-    fun musicGesturesOfferPlayPauseNextTrackAgentCommandWebhookAndNothing() {
+    fun musicGesturesOfferPlayPauseNextPreviousAgentCommandWebhookAndNothing() {
         assertEquals(
             listOf(
                 GestureDestination.PlayPause,
                 GestureDestination.NextTrack,
+                GestureDestination.PreviousTrack,
                 GestureDestination.AgentCommand,
                 GestureDestination.Webhook,
                 GestureDestination.Nothing,

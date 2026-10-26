@@ -191,7 +191,7 @@ class GestureRoutingTest {
     fun routesRoundTripThroughSettings() {
         val stored = MapSettings()
         routing(stored = stored).apply {
-            setRoute(RingGesture.DoubleClick, GestureDestination.NextTrack)
+            setRoute(RingGesture.DoubleClick, GestureDestination.PreviousTrack)
             setRoute(RingGesture.TripleClick, GestureDestination.Webhook)
             setRoute(RingGesture.Click, GestureDestination.AgentCommand)
             setCommand(RingGesture.Click, "Unlock front door")
@@ -207,7 +207,7 @@ class GestureRoutingTest {
         assertEquals("", reloaded.commandFor(RingGesture.DoubleClick))
         assertEquals(GestureDestination.WebhookOnly, reloaded.destinationFor(RingGesture.Hold))
         assertEquals(GestureDestination.LocalAgent, reloaded.destinationFor(RingGesture.ClickHold))
-        assertEquals(GestureDestination.NextTrack, reloaded.destinationFor(RingGesture.DoubleClick))
+        assertEquals(GestureDestination.PreviousTrack, reloaded.destinationFor(RingGesture.DoubleClick))
         assertEquals(GestureDestination.Webhook, reloaded.destinationFor(RingGesture.TripleClick))
     }
 

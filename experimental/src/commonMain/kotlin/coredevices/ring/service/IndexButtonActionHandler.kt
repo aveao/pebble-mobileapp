@@ -30,6 +30,7 @@ class IndexButtonActionHandler(
             when (action) {
                 ButtonAction.PlayPause -> onPlayPause()
                 ButtonAction.NextTrack -> onNextTrack()
+                ButtonAction.PreviousTrack -> onPreviousTrack()
                 is ButtonAction.Webhook -> webhookApi.sendButtonEventIfEnabled(action.gesture, Clock.System.now())
                 is ButtonAction.AgentCommand -> recordingQueue.queueTextProcessing(
                     action.command,
@@ -49,6 +50,7 @@ class IndexButtonActionHandler(
 sealed interface ButtonAction {
     data object PlayPause : ButtonAction
     data object NextTrack : ButtonAction
+    data object PreviousTrack : ButtonAction
     data class Webhook(val gesture: RingGesture) : ButtonAction
     data class AgentCommand(val command: String, val buttonSequence: String) : ButtonAction
 }
@@ -61,6 +63,7 @@ internal fun GestureRoutingPreferences.buttonActionFor(buttonPresses: List<Butto
     return when (destinationFor(gesture)) {
         GestureDestination.PlayPause -> ButtonAction.PlayPause
         GestureDestination.NextTrack -> ButtonAction.NextTrack
+        GestureDestination.PreviousTrack -> ButtonAction.PreviousTrack
         GestureDestination.Webhook -> ButtonAction.Webhook(gesture)
         GestureDestination.AgentCommand -> {
             val command = commandFor(gesture).trim()
