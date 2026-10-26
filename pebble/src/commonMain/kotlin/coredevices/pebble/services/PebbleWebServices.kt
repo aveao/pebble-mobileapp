@@ -597,6 +597,8 @@ data class StoreSearchResult(
     val iconImage: String,
     @SerialName("list_image")
     val listImage: String,
+    @SerialName("icon_tintable")
+    val iconTintable: Boolean = false,
     val title: String,
     val type: String,
     val uuid: String,
@@ -828,6 +830,8 @@ data class StoreApplication(
     val links: StoreLinks,
     @SerialName("list_image")
     val listImage: Map<String, String>,
+    @SerialName("icon_tintable")
+    val iconTintable: Boolean = false,
     @SerialName("published_date")
     @Serializable(with = PublishedDateSerializer::class)
     val publishedDate: Instant?,
@@ -1038,6 +1042,7 @@ fun StoreApplication.toLockerEntry(sourceUrl: String, timelineToken: String?): L
         manifestVersion = app.manifestVersion,
         pluginManifest = app.plugin?.manifest,
         configPage = app.plugin?.configPage,
+        iconTintable = app.iconTintable,
         hardwarePlatforms = buildList {
             var fallbackFlags = 0
             if (app.type == AppType.Watchface.code) {

@@ -39,6 +39,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -58,6 +59,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.painter.ColorPainter
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -1157,7 +1159,8 @@ fun NativeWatchfaceMainContent(
                 AsyncImage(
                     model = entry.listImageUrl,
                     contentDescription = null,
-                    modifier = Modifier.size(18.dp).padding(end = 3.dp)
+                    modifier = Modifier.size(18.dp).padding(end = 3.dp),
+                    colorFilter = entry.listImageColorFilter(),
                 )
             }
             Text(
@@ -1227,7 +1230,12 @@ fun NativeWatchfaceListItem(
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 if (entry.type == AppType.Watchapp) {
-                    AsyncImage(model = entry.listImageUrl, contentDescription = null, modifier = Modifier.size(21.dp))
+                    AsyncImage(
+                        model = entry.listImageUrl,
+                        contentDescription = null,
+                        modifier = Modifier.size(21.dp),
+                        colorFilter = entry.listImageColorFilter(),
+                    )
                     Spacer(modifier = Modifier.width(5.dp))
                 }
                 Text(
@@ -1278,6 +1286,10 @@ private fun SectionHeader(text: String) {
 }
 
 @Composable
+fun CommonApp.listImageColorFilter(): ColorFilter? =
+    if (listImageTintable) ColorFilter.tint(LocalContentColor.current) else null
+
+@Composable
 fun AppImage(entry: CommonApp, modifier: Modifier, size: Dp) {
     val placeholderColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
     val placeholder = remember {
@@ -1324,6 +1336,7 @@ fun AppImage(entry: CommonApp, modifier: Modifier, size: Dp) {
             .widthIn(max = size),
 //            .background(Color.Green),
         placeholder = placeholder,
+        colorFilter = if (entry.type == AppType.Plugin && entry.listImageUrl != null) entry.listImageColorFilter() else null,
         onError = { e ->
             logger.w(e.result.throwable) { "Error loading app image for ${entry.uuid}" }
         },

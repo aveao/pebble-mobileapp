@@ -602,6 +602,7 @@ fun LockerEntry.wrap(config: WatchConfigFlow): LockerWrapper? {
                     watchType = platform,
                     screenshotImageUrl = it.screenshotImageUrl,
                     listImageUrl = it.listImageUrl,
+                    listImageTintable = it.listImageTintable,
                     iconImageUrl = it.iconImageUrl,
                     description = it.description,
                 )
@@ -658,6 +659,7 @@ fun io.rebble.libpebblecommon.web.LockerEntry.asEntity(orderIndex: Int): LockerE
                 name = platform.name,
                 screenshotImageUrl = platform.images.screenshot,
                 listImageUrl = platform.images.list,
+                listImageTintable = iconTintable,
                 iconImageUrl = platform.images.icon,
                 pbwIconResourceId = pbw?.iconResourceId ?: 0,
                 description = platform.description,

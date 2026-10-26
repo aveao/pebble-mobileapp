@@ -302,7 +302,8 @@ fun LockerAppScreen(topBarParams: TopBarParams, uuid: Uuid?, navBarNav: NavBarNa
                                     AsyncImage(
                                         model = entry.listImageUrl,
                                         contentDescription = null,
-                                        modifier = Modifier.size(28.dp)
+                                        modifier = Modifier.size(28.dp),
+                                        colorFilter = entry.listImageColorFilter(),
                                     )
                                     Spacer(modifier = Modifier.width(5.dp))
                                 }
