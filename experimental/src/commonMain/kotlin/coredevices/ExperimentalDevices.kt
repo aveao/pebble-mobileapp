@@ -60,6 +60,7 @@ class ExperimentalDevices(
      *  RecordingProcessingQueue's recording observer kicks off). */
     private val indexFeedSyncService: coredevices.ring.service.indexfeed.IndexFeedSyncService,
     private val defaultListsBootstrap: coredevices.ring.service.indexfeed.DefaultListsBootstrap,
+    private val reminderReconciler: coredevices.ring.reminders.ReminderReconciler,
     private val indexSettingsSummary: IndexSettingsSummary,
     private val rebootLogStore: IndexRebootLogStore,
     private val rssiStatistics: RingRssiStatistics,
@@ -78,6 +79,9 @@ class ExperimentalDevices(
             }
         )
         indexFeedSyncService.hashCode()
+        // Arm alarms for any reminder synced in while this device was away, then keep them in
+        // step as items sync (a new phone, the web app, a second device).
+        reminderReconciler.start()
         // Self-healing: creates the three system seed lists in Firestore
         // (Notes-to-self / Todos / Shopping) if any are missing. Idempotent.
         // Runs after each auth event because [DefaultListsBootstrap] reads
