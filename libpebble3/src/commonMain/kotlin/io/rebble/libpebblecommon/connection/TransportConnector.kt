@@ -254,6 +254,7 @@ class RealPebbleConnector(
 
             else -> false
         }
+        devConnectionManager.init()
         if (recoveryMode) {
             _state.value = Connected.ConnectedInPrf(
                 identifier = identifier,

@@ -2133,7 +2133,7 @@ fun WatchDetails(
         watch.color()?.uiDescription
     }
     FlowRow(verticalArrangement = Arrangement.Center) {
-        if (watch is ConnectedPebbleDevice) {
+        if (watch is ConnectedPebble.DevConnection) {
             val devConnectionActive by watch.devConnectionActive.collectAsState()
             if (devConnectionActive) {
                 Icon(

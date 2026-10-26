@@ -75,6 +75,7 @@ import io.rebble.libpebblecommon.connection.qemu.QemuTransport
 import io.rebble.libpebblecommon.connection.devconnection.CloudpebbleProxyProtocolVersion
 import io.rebble.libpebblecommon.connection.devconnection.DevConnectionCloudpebbleProxy
 import io.rebble.libpebblecommon.connection.devconnection.DevConnectionManager
+import io.rebble.libpebblecommon.connection.devconnection.DevConnectionResumer
 import io.rebble.libpebblecommon.connection.devconnection.DevConnectionServer
 import io.rebble.libpebblecommon.connection.endpointmanager.AppFetchProvider
 import io.rebble.libpebblecommon.connection.endpointmanager.AppOrderManager
@@ -453,6 +454,7 @@ fun initKoin(
                 singleOf(::RealBluetoothStateProvider) bind BluetoothStateProvider::class
                 singleOf(::RealTimeProvider) bind TimeProvider::class
                 singleOf(::DevConnectionServer)
+                singleOf(::DevConnectionResumer)
                 singleOf(::RealBlobDbDatabaseManager) bind BlobDbDatabaseManager::class
                 single {
                     DevConnectionCloudpebbleProxy(
@@ -627,6 +629,7 @@ fun initKoin(
                             protocolHandler = get(),
                             companionAppLifecycleManager = get(),
                             pluginLogs = get(),
+                            resumer = get(),
                             scope = get(),
                         )
                     }
