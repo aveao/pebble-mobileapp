@@ -33,7 +33,7 @@ default.
 - Build a watchface or app that uses plugin data.
 - Build a plugin.
 
-First, enable plugins in the mobile app (v1.16.0 or above): **Settings → Apps → Plugins / permissions preview**. The demo apps below are installed automatically, and a **Plugins** tab appears in the Apps
+First, enable plugins in the mobile app (v1.16.0 or above): **Settings → Plugins → Plugins / permissions preview**. The demo apps below are installed automatically, and a **Plugins** tab appears in the Apps
 screen listing plugins and their settings pages.
 
 ## Try the demo apps and plugins
@@ -43,6 +43,9 @@ Source for each is in this folder:
 - **`weather-face`** ("Plugin Demo: Weather Face"): a watchface built entirely from a weather
   plugin: any installed one (the built-in one, `met-weather`, or yours), picked on its settings
   page.
+- **`complication-face`** ("Plugin Demo: Complication Face"): the time and date with two slots,
+  a number and a bitmap, filled from the user's preferred readings (`preferences/complications`):
+  each takes the first entry offering its shape that the other hasn't taken.
 - **`met-weather`**: weather for the phone's current location from MET Norway (api.met.no), an
   alternative to the built-in weather plugin. Shows `navigator.geolocation` and drawing condition
   images in JS.
@@ -103,7 +106,7 @@ Examples now:
 | --------------- | ----------------------------------------------------------------- | --------- |
 | `weather`       | `location`                                                        | built-in  |
 | `calendar`      | `event`                                                           | built-in  |
-| `phone`         | `phone_state`                                                     | built-in  |
+| `phone`         | `phone_state`, `find_my_phone`                                    | built-in  |
 | `music`         | `track`                                                           | built-in (Android) |
 | `notifications` | `notification`                                                    | built-in (Android) |
 | `watch`         | `switch_setting`, `number_setting`, `text_setting`, `app_setting` | built-in  |

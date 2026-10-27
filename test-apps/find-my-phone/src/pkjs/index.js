@@ -2,7 +2,7 @@
 // rings while anyone is subscribed), and the subscription ending when this app closes stops it.
 Pebble.addEventListener("ready", function () {
     Pebble.subscribeToSource({
-        category: "phone_state",
+        category: "phone",
         item: "find_my_phone",
         onData: function () {},
         onError: function (err) {
