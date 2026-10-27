@@ -95,8 +95,10 @@ class PluginRegistry(
         category: String,
         item: String,
         preferredPluginUuid: String? = null,
+        /** A plugin reading another's source can't be answered by itself. */
+        exclude: Uuid? = null,
     ): Plugin? {
-        val serving = plugins.filter { it.serves(category, item) }
+        val serving = plugins.filter { it.serves(category, item) && it.pluginUuid != exclude }
         val userChoice = _preferredSources.value[sourceKey(category, item)]
         return serving.firstOrNull { it.pluginUuid.toString() == preferredPluginUuid }
             ?: serving.firstOrNull { it.pluginUuid == userChoice }

@@ -145,6 +145,7 @@ import io.rebble.libpebblecommon.plugin.PluginOAuthApi
 import io.rebble.libpebblecommon.plugin.PluginClient
 import io.rebble.libpebblecommon.plugin.PluginLogs
 import io.rebble.libpebblecommon.plugin.PluginRegistry
+import io.rebble.libpebblecommon.plugin.PluginSources
 import io.rebble.libpebblecommon.plugin.files.PluginFileAccess
 import io.rebble.libpebblecommon.plugin.files.PluginFileSystem
 import io.rebble.libpebblecommon.plugin.files.platformPluginFileSystem
@@ -495,7 +496,16 @@ fun initKoin(
                 single<PluginFileSystem> { platformPluginFileSystem(get(), get()) }
                 singleOf(::PluginFileAccess)
                 singleOf(::PluginLogs)
-                single { JsPluginFactory(get(), get(), get(), get(), get(), get(), get(), get(), get(), pluginOAuthApi) }
+                single {
+                    PluginSources(
+                        get(),
+                        { get<AppPermissions>().subjectOf(it) },
+                        { caller, plugin, request ->
+                            get<PluginClient>().observe(caller, plugin, request.category, request.item, request.properties, request.iconPixelSize)
+                        },
+                    )
+                }
+                single { JsPluginFactory(get(), get(), get(), get(), get(), get(), get(), get(), get(), get(), pluginOAuthApi) }
                 singleOf(::BundledAppInstaller)
                 singleOf(::LockerPluginLoader)
                 singleOf(::FirmwareDownloader)

@@ -1,6 +1,6 @@
-// Weather where the phone is, from MET Norway's Locationforecast (api.met.no): no key, but its
-// terms want an identifying User-Agent, coordinates to at most 4 decimals, and Expires /
-// If-Modified-Since respected. https://api.met.no/doc/TermsOfService
+// Weather for the user's weather locations (or just where the phone is), from MET Norway's
+// Locationforecast (api.met.no): no key, but its terms want an identifying User-Agent, coordinates
+// to at most 4 decimals, and Expires / If-Modified-Since respected. https://api.met.no/doc/TermsOfService
 
 var FORECAST_URL = 'https://api.met.no/weatherapi/locationforecast/2.0/complete';
 var USER_AGENT = 'PebbleWeatherPluginDemo/1.0 github.com/coredevices/mobileapp';
@@ -21,19 +21,72 @@ function currentPosition() {
   });
 }
 
-// ---------------------------------------------------------------- forecast
+/**
+ * The user's weather locations, in their order, with the phone's position for the current-location
+ * entry; just the phone's position if the app can't say.
+ */
+var LOCATIONS = { category: 'preferences', item: 'weather_location' };
+var UNITS = { category: 'preferences', item: 'units' };
 
-function cached() {
-  try { return JSON.parse(localStorage.getItem(CACHE_KEY)); } catch (e) { return null; }
+async function places() {
+  var locations;
+  try {
+    locations = (await Pebble.readSource(LOCATIONS)).instances;
+  } catch (e) {
+    console.log('No weather locations (' + ((e && e.code) || e) + '); using the current position');
+  }
+  if (!locations || !locations.length) {
+    return [{ id: 'current', name: 'Current location', coords: await currentPosition() }];
+  }
+  var found = await Promise.all(locations.map(async function (location) {
+    var p = location.properties;
+    var current = p.current && p.current.boolean && p.current.boolean.value;
+    var coords = { latitude: p.latitude && p.latitude.numericValue.value, longitude: p.longitude && p.longitude.numericValue.value };
+    if (current || !p.latitude) {
+      try {
+        coords = await currentPosition();
+      } catch (e) {
+        return null;
+      }
+    }
+    return { id: location.instanceId, name: p.name.shortText.text, coords: coords };
+  }));
+  return found.filter(function (place) { return place; });
 }
 
-/** The cached forecast if it's for the same place and MET says it's still current; else a fresh one. */
+// ---------------------------------------------------------------- units
+
+async function temperatureUnit() {
+  try {
+    var units = (await Pebble.readSource(UNITS)).instances[0];
+    return units.properties.temperature.shortText.text;
+  } catch (e) {
+    return '°C';
+  }
+}
+
+/** Text in the user's unit; `numericValue` stays in °C. */
+function inUnit(celsius, unit) {
+  return Math.round(unit === '°F' ? celsius * 9 / 5 + 32 : celsius) + unit;
+}
+
+// ---------------------------------------------------------------- forecast
+
+function cacheKey(lat, lon) {
+  return CACHE_KEY + ':' + lat + ',' + lon;
+}
+
+function cached(lat, lon) {
+  try { return JSON.parse(localStorage.getItem(cacheKey(lat, lon))); } catch (e) { return null; }
+}
+
+/** The cached forecast if MET says it's still current; else a fresh one. */
 async function forecastFor(coords) {
   // ~1km: close enough to share a forecast, and well inside MET's 4-decimal limit.
   var lat = coords.latitude.toFixed(2);
   var lon = coords.longitude.toFixed(2);
-  var saved = cached();
-  var samePlace = saved && saved.lat === lat && saved.lon === lon;
+  var saved = cached(lat, lon);
+  var samePlace = !!saved;
   if (samePlace && Date.now() < saved.expires) return saved;
 
   var headers = { 'User-Agent': USER_AGENT };
@@ -50,7 +103,7 @@ async function forecastFor(coords) {
     throw new Error('MET returned ' + response.status);
   }
   fresh.expires = expires;
-  localStorage.setItem(CACHE_KEY, JSON.stringify(fresh));
+  localStorage.setItem(cacheKey(lat, lon), JSON.stringify(fresh));
   return fresh;
 }
 
@@ -210,8 +263,8 @@ function conditionShapes(symbol, iconPixelSize, withPhrase) {
 
 // ---------------------------------------------------------------- envelopes
 
-function temperature(celsius) {
-  var text = Math.round(celsius) + '°C';
+function temperature(celsius, unit) {
+  var text = inUnit(celsius, unit);
   return { shortText: { text: text }, longText: { text: text }, numericValue: { value: celsius, unit: '°C' } };
 }
 
@@ -220,17 +273,17 @@ function symbolOf(entry) {
   return next && next.summary && next.summary.symbol_code;
 }
 
-function locationEnvelope(series, iconPixelSize, wanted) {
+function locationInstance(place, series, iconPixelSize, wanted, unit) {
   var now = series[0];
   var details = now.data.instant.details;
   // MET has no daily summary, so the day's range is the next 24 hours'.
   var temps = series.slice(0, 24).map(function (entry) { return entry.data.instant.details.air_temperature; });
   var properties = {
-    name: { shortText: { text: 'Current location' } },
-    temperature: temperature(details.air_temperature),
-    feels_like: temperature(typeof details.apparent_air_temperature === 'number' ? details.apparent_air_temperature : details.air_temperature),
-    high: temperature(Math.max.apply(null, temps)),
-    low: temperature(Math.min.apply(null, temps)),
+    name: { shortText: { text: place.name } },
+    temperature: temperature(details.air_temperature, unit),
+    feels_like: temperature(typeof details.apparent_air_temperature === 'number' ? details.apparent_air_temperature : details.air_temperature, unit),
+    high: temperature(Math.max.apply(null, temps), unit),
+    low: temperature(Math.min.apply(null, temps), unit),
     condition: conditionShapes(symbolOf(now), iconPixelSize, true),
     condition_code: { longText: { text: conditionCode(symbolOf(now)) } },
   };
@@ -240,17 +293,17 @@ function locationEnvelope(series, iconPixelSize, wanted) {
   }
   // A series of glyphs is costly to draw, so only for a subscriber that asked for the hours.
   if (wanted.some(function (name) { return name.indexOf('hourly_') === 0; })) {
-    var hourly = hourlySeries(series, iconPixelSize);
+    var hourly = hourlySeries(series, iconPixelSize, unit);
     wanted.forEach(function (name) { if (hourly[name]) properties[name] = hourly[name]; });
   }
-  return [{ instanceId: 'current', properties: properties }];
+  return { instanceId: place.id, properties: properties };
 }
 
 /**
  * The hours ahead as series, from the hour we're in. MET's timeseries turns 6-hourly after a couple
  * of days, so this stops at the first step that isn't an hour.
  */
-function hourlySeries(series, iconPixelSize) {
+function hourlySeries(series, iconPixelSize, unit) {
   var start = Date.parse(series[0].time);
   var hours = [];
   for (var i = 0; i < series.length && i < MAX_HOURS && Date.parse(series[i].time) === start + i * 3600000; i++) {
@@ -277,7 +330,7 @@ function hourlySeries(series, iconPixelSize) {
   return {
     hourly_temperature: over({
       numericValue: { values: temps, unit: '°C' },
-      shortText: { values: temps.map(function (t) { return Math.round(t) + '°C'; }) },
+      shortText: { values: temps.map(function (t) { return inUnit(t, unit); }) },
     }),
     hourly_condition: over(condition),
     hourly_condition_code: over({ longText: { values: symbols.map(conditionCode) } }),
@@ -285,31 +338,36 @@ function hourlySeries(series, iconPixelSize) {
 }
 
 Pebble.registerSourceHandler(async function (request, respond) {
-  var coords;
+  // So this runs again when the user changes their locations or units.
+  Pebble.subscribeSource(LOCATIONS);
+  Pebble.subscribeSource(UNITS);
+  var where;
   try {
-    coords = await currentPosition();
+    where = await places();
   } catch (e) {
     console.error('No location: ' + ((e && e.message) || e));
     respond.error('PERMISSION_DENIED', (e && e.message) || 'no location');
     return;
   }
-  var forecast;
-  try {
-    forecast = await forecastFor(coords);
-  } catch (e) {
-    console.error('Fetching the MET forecast failed: ' + e);
+  var unit = await temperatureUnit();
+  var hourStart = Date.now() - 60 * 60 * 1000;
+  var validUntil = Infinity;
+  // A place MET can't be reached for is left out, rather than failing the others.
+  var instances = (await Promise.all(where.map(async function (place) {
+    try {
+      var forecast = await forecastFor(place.coords);
+      var series = forecast.body.properties.timeseries.filter(function (entry) { return Date.parse(entry.time) > hourStart; });
+      if (!series.length) return null;
+      validUntil = Math.min(validUntil, forecast.expires);
+      return locationInstance(place, series, request.iconPixelSize, request.properties || HOURLY_PROPERTIES, unit);
+    } catch (e) {
+      console.error('Fetching the MET forecast for ' + place.name + ' failed: ' + e);
+      return null;
+    }
+  }))).filter(function (instance) { return instance; });
+  if (!instances.length) {
     respond.error('PLUGIN_UNAVAILABLE', 'Could not reach MET Norway.');
     return;
   }
-  var series = forecast.body.properties.timeseries;
-  var hourStart = Date.now() - 60 * 60 * 1000;
-  series = series.filter(function (entry) { return Date.parse(entry.time) > hourStart; });
-  if (!series.length) {
-    respond.data({ instances: [] });
-    return;
-  }
-  respond.data({
-    validUntilMs: forecast.expires,
-    instances: locationEnvelope(series, request.iconPixelSize, request.properties || HOURLY_PROPERTIES),
-  });
+  respond.data({ validUntilMs: validUntil, instances: instances });
 });

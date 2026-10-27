@@ -46,9 +46,9 @@ Source for each is in this folder:
 - **`complication-face`** ("Plugin Demo: Complication Face"): the time and date with two slots,
   a number and a bitmap, filled from the user's preferred readings (`preferences/complications`):
   each takes the first entry offering its shape that the other hasn't taken.
-- **`met-weather`**: weather for the phone's current location from MET Norway (api.met.no), an
-  alternative to the built-in weather plugin. Shows `navigator.geolocation` and drawing condition
-  images in JS.
+- **`met-weather`**: weather for your weather locations from MET Norway (api.met.no), in your
+  units, an alternative to the built-in weather plugin. Shows `Pebble.readSource`,
+  `navigator.geolocation` and drawing condition images in JS.
 - **`plugin-test`** ("Plugin Demo: Dashboard"): a watchapp with eight tiles, each set from its
   settings page to any reading from any installed plugin. This shows what data is available through the example/built-in plugins. You can also configure taps to take actions, or make a tile a button for any action that takes no arguments (e.g. "Back", the default, goes to the previous app). A tile can also show the date, from the watch's own clock.
 - **`stocks`**: share prices for tickers you pick on its settings page.
@@ -538,6 +538,27 @@ What a plugin has to work with:
 - **`Pebble.secureStorage`** for credentials (tokens, API keys): `await getItem(key)`,
   `setItem(key, value)` and `removeItem(key)`, encrypted by the phone's keystore. Private to your
   plugin (PKJS can't read it) and deleted when the app is removed.
+- **`await Pebble.readSource({ category, item, plugin?, properties?, iconPixelSize? })`** to read
+  another plugin's source (built-in or not), e.g. `preferences/units` (see
+  [User preferences](#user-preferences)). It rejects with `PLUGIN_UNAVAILABLE`,
+  `PERMISSION_DENIED`, `INVALID_REQUEST` or `TIMEOUT`.
+- **`Pebble.subscribeSource(sameRequest)`** in your source handler, so the handler runs again
+  whenever that source changes (`request.trigger` says which), while anything is subscribed to
+  yours. Call it on every run: whatever a run doesn't subscribe to is dropped. While subscribed,
+  `readSource` answers from the subscription. At most 8; changes are debounced by a second.
+
+  ```javascript
+  Pebble.registerSourceHandler(async function (request, respond) {
+    var units = { category: 'preferences', item: 'units' };
+    Pebble.subscribeSource(units);
+    var unit = (await Pebble.readSource(units)).instances[0].properties.temperature.shortText.text;
+    // ...
+  });
+  ```
+
+  Either way you read as your plugin, with its permissions, and only a source whose caller
+  permissions every one of your sources and actions also requires, so what you read can't reach
+  a caller who couldn't read it. A plugin can't read itself, or one that already reads it.
 - **`Pebble.refreshSources(["finance/stock"])`** when data changes outside a request (for example,
   the user added a ticker on the settings page).
 - **`Pebble.oauth`** for sign-in with OAuth providers, without the plugin ever holding a client
@@ -661,6 +682,5 @@ We're planning:
 - A way to cache images on the watch (the Weather and Complication demo faces need a phone
   connection to display images after restarting, right now)
 - PebbleKit-Android plugin support.
-- Plugins calling other plugins.
 - Publishing plugins to the app store (it can already list them, but uploads aren't open yet).
 - More built-in plugins exposing more things.

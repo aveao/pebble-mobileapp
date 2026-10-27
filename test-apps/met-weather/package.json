@@ -1,7 +1,7 @@
 {
   "name": "met-weather",
   "author": "Pebble",
-  "version": "1.0.1",
+  "version": "1.0.3",
   "pebble": {
     "displayName": "MET Norway Weather",
     "uuid": "323dc117-55bd-455f-9ee4-4d0faba56ea1",
@@ -18,7 +18,7 @@
       }
     ],
     "plugin": {
-      "description": "Weather where the phone is, from the Norwegian Meteorological Institute (api.met.no). One location instance (the phone's current position) and the hours ahead of it.",
+      "description": "Weather for the user's weather locations (the phone's position for the current-location one), from the Norwegian Meteorological Institute (api.met.no), in their units. One instance per location, keyed like the built-in weather plugin's, and the hours ahead of each.",
       "script": "plugin.js",
       "sources": [
         {
