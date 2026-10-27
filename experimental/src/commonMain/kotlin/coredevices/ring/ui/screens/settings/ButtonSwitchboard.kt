@@ -9,6 +9,7 @@ import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -32,6 +33,7 @@ import androidx.compose.material.icons.filled.GraphicEq
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Power
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.SettingsEthernet
 import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.filled.SkipPrevious
@@ -99,12 +101,21 @@ val RingGesture.glyph: List<Dp>
         RingGesture.ClickHold -> listOf(DOT, 26.dp)
     }
 
-/** An installed agent plugin offered as a recording destination; only a [connected] one can be picked. */
-data class AgentPluginOption(val provider: IntegrationProvider, val connected: Boolean) {
+/** An installed agent plugin offered as a recording destination; only a [connected] one can be picked,
+ *  and a [configurable] one has a settings page to reopen once routed to. */
+data class AgentPluginOption(
+    val provider: IntegrationProvider,
+    val connected: Boolean,
+    val configurable: Boolean = false,
+) {
     val destination: GestureDestination.AgentPlugin get() = GestureDestination.AgentPlugin(provider.id)
 }
 
 fun List<AgentPluginOption>.titles(): Map<String, String> = associate { it.provider.id to it.provider.title }
+
+/** The plugin [destination] routes to, when it has settings to open. */
+fun List<AgentPluginOption>.configurableFor(destination: GestureDestination): AgentPluginOption? =
+    firstOrNull { it.configurable && it.destination == destination }
 
 /** One row of the "Other agents" group in the destination sheet. */
 sealed interface OtherAgentRow {
@@ -227,6 +238,7 @@ internal fun ButtonSwitchboard(
     storeAgentPlugins: List<StorePlugin> = emptyList(),
     onConnectAgentPlugin: (IntegrationProvider) -> Unit = {},
     onInstallAgentPlugin: (StorePlugin) -> Unit = {},
+    onConfigureAgentPlugin: (IntegrationProvider) -> Unit = {},
 ) {
     var sheetGesture by remember { mutableStateOf<RingGesture?>(null) }
     val webhookCopies = { gesture: RingGesture -> webhookConfigFor(gesture).isActive }
@@ -248,6 +260,9 @@ internal fun ButtonSwitchboard(
                     agentTitles = agentTitles,
                     command = commands[gesture].orEmpty(),
                     onEdit = { sheetGesture = gesture },
+                    onConfigure = agentPlugins.configurableFor(destination)?.let { plugin ->
+                        { onConfigureAgentPlugin(plugin.provider) }
+                    },
                 )
                 if (gesture.kind == GestureKind.Recording &&
                     destination != GestureDestination.WebhookOnly &&
@@ -283,6 +298,10 @@ internal fun ButtonSwitchboard(
                 sheetGesture = null
                 onInstallAgentPlugin(it)
             },
+            onConfigureAgentPlugin = {
+                sheetGesture = null
+                onConfigureAgentPlugin(it)
+            },
             onOpenWebhookSettings = {
                 sheetGesture = null
                 onOpenWebhookSettings(gesture)
@@ -307,6 +326,7 @@ private fun GestureRow(
     agentTitles: Map<String, String>,
     command: String,
     onEdit: () -> Unit,
+    onConfigure: (() -> Unit)?,
 ) {
     val recording = gesture.kind == GestureKind.Recording
     val isIndexAgent = destination == GestureDestination.IndexAgent ||
@@ -376,7 +396,19 @@ private fun GestureRow(
                     overflow = TextOverflow.Ellipsis,
                     fontWeight = if (isIndexAgent) FontWeight.Medium else FontWeight.Normal,
                     color = colors.onSurface,
+                    modifier = Modifier.weight(1f),
                 )
+                if (onConfigure != null) {
+                    Icon(
+                        Icons.Default.Settings,
+                        contentDescription = "Configure",
+                        tint = colors.onSurfaceVariant,
+                        modifier = Modifier
+                            .size(18.dp)
+                            .clip(CircleShape)
+                            .clickable(onClick = onConfigure),
+                    )
+                }
             }
         }
     }
@@ -455,6 +487,7 @@ private fun GestureDestinationSheet(
     onSelect: (GestureDestination) -> Unit,
     onConnectAgentPlugin: (IntegrationProvider) -> Unit,
     onInstallAgentPlugin: (StorePlugin) -> Unit,
+    onConfigureAgentPlugin: (IntegrationProvider) -> Unit,
     onOpenWebhookSettings: () -> Unit,
     onSetWebhookCopy: (Boolean) -> Unit,
     onDismiss: () -> Unit,
@@ -511,6 +544,7 @@ private fun GestureDestinationSheet(
                     },
                     onConnect = onConnectAgentPlugin,
                     onInstall = onInstallAgentPlugin,
+                    onConfigure = onConfigureAgentPlugin,
                 )
             }
         }
@@ -578,6 +612,7 @@ private fun OtherAgentsGroup(
     onSelect: (GestureDestination) -> Unit,
     onConnect: (IntegrationProvider) -> Unit,
     onInstall: (StorePlugin) -> Unit,
+    onConfigure: (IntegrationProvider) -> Unit,
 ) {
     val colors = IndexTheme.colors
     val routed = current as? GestureDestination.AgentPlugin
@@ -611,10 +646,15 @@ private fun OtherAgentsGroup(
                         val connect = { onConnect(option.provider) }
                         OtherAgentChoiceRow(
                             title = option.provider.title,
-                            subtitle = if (option.connected) null else "Not connected",
+                            subtitle = when {
+                                !option.connected -> "Not connected"
+                                option.configurable -> "Hold to reconfigure"
+                                else -> null
+                            },
                             selected = option.destination == current,
                             onClick = { if (option.connected) onSelect(option.destination) else connect() },
                             onConnect = connect.takeUnless { option.connected },
+                            onLongClick = if (option.configurable) { { onConfigure(option.provider) } } else null,
                         )
                     }
                     is OtherAgentRow.Missing -> OtherAgentChoiceRow(
@@ -647,6 +687,7 @@ private fun OtherAgentChoiceRow(
     selected: Boolean,
     onClick: () -> Unit,
     onConnect: (() -> Unit)?,
+    onLongClick: (() -> Unit)? = null,
 ) {
     SheetChoiceRow(
         icon = Icons.Default.Power,
@@ -654,6 +695,7 @@ private fun OtherAgentChoiceRow(
         subtitle = subtitle,
         selected = selected,
         onClick = onClick,
+        onLongClick = onLongClick,
         trailing = if (onConnect == null) null else {
             { TextButton(onClick = onConnect) { Text("Connect") } }
         },
@@ -669,6 +711,7 @@ private fun SheetChoiceRow(
     selected: Boolean,
     onClick: () -> Unit,
     trailing: (@Composable () -> Unit)? = null,
+    onLongClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
     val colors = IndexTheme.colors
@@ -678,7 +721,7 @@ private fun SheetChoiceRow(
             .padding(horizontal = 8.dp)
             .clip(RoundedCornerShape(12.dp))
             .background(if (selected) colors.redSurface else Color.Transparent)
-            .clickable(onClick = onClick)
+            .combinedClickable(onClick = onClick, onLongClick = onLongClick)
             .padding(horizontal = 8.dp, vertical = 11.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(14.dp),

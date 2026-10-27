@@ -65,6 +65,11 @@ class RingButtonViewModel(
         .map { plugins -> plugins.filter { IntegrationSupport.Agent in it.supports } }
         .stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
+    /** Plugins with a locker page, which is where a routed plugin is reconfigured from. */
+    val lockerPlugins: StateFlow<Set<Uuid>> = lockerUuids
+        .map { it.toSet() }
+        .stateIn(viewModelScope, SharingStarted.Lazily, emptySet())
+
     /** Plugins connect from their own settings page, so re-check whenever the switchboard shows. */
     fun refreshAgentDestinations() {
         providerRefresh.value++

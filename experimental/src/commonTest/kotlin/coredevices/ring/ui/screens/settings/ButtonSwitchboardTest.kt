@@ -112,6 +112,18 @@ class ButtonSwitchboardTest {
     }
 
     @Test
+    fun onlyAConfigurableRoutedPluginOffersItsSettings() {
+        val claude = AgentPluginOption(FakeAgentProvider("plugin:claude", "Claude"), connected = true, configurable = true)
+        val codex = AgentPluginOption(FakeAgentProvider("plugin:codex", "Codex"), connected = true)
+        val options = listOf(claude, codex)
+
+        assertEquals(claude, options.configurableFor(claude.destination))
+        assertEquals(null, options.configurableFor(codex.destination))
+        assertEquals(null, options.configurableFor(GestureDestination.IndexAgent))
+        assertEquals(null, options.configurableFor(GestureDestination.AgentPlugin("plugin:gone")))
+    }
+
+    @Test
     fun agentPluginTilesAreLabelledByTheirProvider() {
         val claude = GestureDestination.AgentPlugin("plugin:claude")
 

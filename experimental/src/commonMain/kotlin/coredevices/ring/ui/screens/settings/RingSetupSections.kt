@@ -32,7 +32,11 @@ fun RingButtonSection(coreNav: CoreNav, viewModel: RingButtonViewModel = koinVie
     val agentProviders by viewModel.agentProviders.collectAsState()
     val connectedAgentProviders by viewModel.connectedAgentProviders.collectAsState()
     val storeAgentPlugins by viewModel.storeAgentPlugins.collectAsState()
-    val agentPlugins = agentProviders.map { AgentPluginOption(it, connected = it in connectedAgentProviders) }
+    val lockerPlugins by viewModel.lockerPlugins.collectAsState()
+    val agentPlugins = agentProviders.map {
+        val connected = it in connectedAgentProviders
+        AgentPluginOption(it, connected = connected, configurable = connected && it.hasLockerPage(lockerPlugins))
+    }
     val configurePlugin: (Uuid, String) -> Unit = { uuid, title ->
         coreNav.navigateTo(CommonRoutes.WatchappSettingsRoute(uuid = uuid.toString(), title = title))
     }
@@ -59,6 +63,11 @@ fun RingButtonSection(coreNav: CoreNav, viewModel: RingButtonViewModel = koinVie
             if (provider is PblPluginIntegrationProvider) configurePlugin(provider.pluginUuid, provider.title)
         },
         onInstallAgentPlugin = installer::install,
+        onConfigureAgentPlugin = { provider ->
+            if (provider is PblPluginIntegrationProvider) {
+                coreNav.navigateTo(CommonRoutes.LockerAppRoute(uuid = provider.pluginUuid.toString()))
+            }
+        },
     )
 }
 
