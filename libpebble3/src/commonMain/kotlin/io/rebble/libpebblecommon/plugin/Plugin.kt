@@ -144,6 +144,7 @@ data class SeriesShape(
     val longText: TextSeries? = null,
     val icon: BitmapSeries<IconShape>? = null,
     val image: BitmapSeries<ImageShape>? = null,
+    val timestamp: TimestampSeries? = null,
 )
 
 @Serializable
@@ -157,6 +158,12 @@ data class NumericSeries(
 @Serializable
 data class TextSeries(
     val values: List<String?>,
+)
+
+/** Epoch seconds UTC, as [TimestampShape]. */
+@Serializable
+data class TimestampSeries(
+    val values: List<Long?>,
 )
 
 @Serializable

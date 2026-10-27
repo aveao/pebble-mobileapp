@@ -140,6 +140,7 @@ import coredevices.pebble.ui.SettingsKeys.KEY_ENABLE_FIREBASE_UPLOADS
 import coredevices.pebble.ui.SettingsKeys.KEY_ENABLE_MEMFAULT_UPLOADS
 import coredevices.pebble.ui.SettingsKeys.KEY_ENABLE_MIXPANEL_UPLOADS
 import coredevices.pebble.weather.WeatherFetcher
+import coredevices.pebble.weather.WeatherPlugin
 import coredevices.ui.ConfirmDialog
 import coredevices.ui.CoreLinearProgressIndicator
 import coredevices.ui.M3Dialog
@@ -176,6 +177,8 @@ import io.rebble.libpebblecommon.js.PKJSApp
 import io.rebble.libpebblecommon.metadata.WatchType
 import io.rebble.libpebblecommon.packets.ProtocolCapsFlag
 import io.rebble.libpebblecommon.permissions.PermissionPolicy
+import io.rebble.libpebblecommon.plugin.PluginMetadata
+import io.rebble.libpebblecommon.plugin.PluginRegistry
 import io.rebble.libpebblecommon.services.FirmwareVersion
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
@@ -563,9 +566,11 @@ fun rememberSettingsItemsState(navBarNav: NavBarNav?, snackbarDisplay: SnackbarD
     val healthSyncTracker: HealthSyncTracker = koinInject()
     val healthPlatformSyncEnabled by healthSyncTracker.enabled.collectAsState()
     val healthIsSyncing by platformHealthSync.syncing.collectAsState()
+    val preferredSources by libPebble.preferredSourcePlugins.collectAsState()
 
     val rawSettingsItems = remember(
             libPebbleConfig,
+            preferredSources,
             debugOptionsEnabled,
             missingPermissions,
             updateState,
@@ -1462,6 +1467,28 @@ fun rememberSettingsItemsState(navBarNav: NavBarNav?, snackbarDisplay: SnackbarD
                         GlobalScope.launch { weatherFetcher.fetchWeather(this) }
                     },
                 ),
+                run {
+                    // Any plugin but the built-in one, which shows what this fetches.
+                    val providers = libPebble.getAllPlugins().filter {
+                        it.serves(WeatherPlugin.CATEGORY, WeatherPlugin.ITEM_LOCATION) &&
+                            it.pluginUuid != WeatherPlugin.BUILT_IN_WEATHER_UUID
+                    }
+                    val chosen = preferredSources[PluginRegistry.sourceKey(WeatherPlugin.CATEGORY, WeatherPlugin.ITEM_LOCATION)]
+                    basicSettingsDropdownItem(
+                        title = "Weather provider",
+                        description = "Where the watch's weather app and timeline get their forecast",
+                        topLevelType = TopLevelType.Phone,
+                        section = Section.Weather,
+                        items = listOf<PluginMetadata?>(null) + providers,
+                        selectedItem = providers.firstOrNull { it.pluginUuid == chosen },
+                        onItemSelected = {
+                            libPebble.setPreferredSourcePlugin(WeatherPlugin.CATEGORY, WeatherPlugin.ITEM_LOCATION, it?.pluginUuid)
+                            GlobalScope.launch { weatherFetcher.fetchWeather(this) }
+                        },
+                        itemText = { it?.let { plugin -> "Plugin: ${plugin.name}" } ?: "Pebble" },
+                        show = { coreConfig.fetchWeather && libPebbleConfig.watchConfig.enablePlugins && providers.isNotEmpty() },
+                    )
+                },
                 basicSettingsDropdownItem(
                     title = "Weather Refresh Interval",
                     topLevelType = TopLevelType.Phone,

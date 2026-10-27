@@ -47,7 +47,8 @@ Source for each is in this folder:
   a number and a bitmap, filled from the user's preferred readings (`preferences/complications`):
   each takes the first entry offering its shape that the other hasn't taken.
 - **`met-weather`**: weather for your weather locations from MET Norway (api.met.no), in your
-  units, an alternative to the built-in weather plugin. Shows `Pebble.readSource`,
+  units, an alternative to the built-in weather plugin. It can also be the watch's weather
+  provider (Settings → Weather → Weather provider). Shows `Pebble.subscribeSource`,
   `navigator.geolocation` and drawing condition images in JS.
 - **`plugin-test`** ("Plugin Demo: Dashboard"): a watchapp with eight tiles, each set from its
   settings page to any reading from any installed plugin. This shows what data is available through the example/built-in plugins. You can also configure taps to take actions, or make a tile a button for any action that takes no arguments (e.g. "Back", the default, goes to the previous app). A tile can also show the date, from the watch's own clock.
@@ -117,6 +118,30 @@ Examples now:
 | `agent`         | `chats`, `configured`                                             |           |
 | `preferences`   | `units`, `complications`, `weather_location`                      | built-in  |
 
+**Weather.** `weather/location` serves one instance per place, with the user's weather locations
+(`preferences/weather_location`) under the same `instanceId`s. Temperatures are `numericValue`s
+in `°C` or `°F` (say which in `unit`), with `shortText`/`longText` in the user's units. Series
+start at the place's local midnight: `stepSec` 3600 for `hourly_*`, 86400 for `daily_*`.
+
+| Property | Shapes | |
+| --- | --- | --- |
+| `name`, `temperature`, `feels_like`, `high`, `low` | `shortText`, `longText`, `numericValue` | `high`/`low` for the local day |
+| `condition`, `condition_code` | `shortText`, `longText` (+ `icon`, `image`) | codes: `sun`, `partly_cloudy`, `cloudy`, `light_rain`, `heavy_rain`, `light_snow`, `heavy_snow`, `rain_and_snow`, `unknown` |
+| `uv_index`, `precipitation` (chance, %), `humidity` (%) | `numericValue`, `shortText` | |
+| `wind_speed` (`m/s`, `km/h`, `mph` or `knots`), `wind_direction` (degrees it's from) | `numericValue` | |
+| `utc_offset` (minutes east of UTC) | `numericValue` | |
+| `sunrise`, `sunset` | `timestamp` | today's |
+| `hourly_temperature`, `hourly_condition`, `hourly_condition_code` | `series` | |
+| `daily_high`, `daily_low`, `daily_condition`, `daily_condition_code`, `daily_precipitation`, `daily_sunrise`, `daily_sunset` | `series` (`timestamp` for the sun) | |
+
+The built-in weather plugin serves all of these, from whichever provider the user chose.
+
+A weather plugin the user picks as their weather provider (Settings → Weather) feeds the watch's
+weather app and timeline pins, as well as apps. For that it needs at least `temperature`,
+`condition_code`, `utc_offset`, and today's and tomorrow's `daily_high`, `daily_low`,
+`daily_condition_code`, `daily_sunrise` and `daily_sunset`; the rest fills in what the watch
+shows if it's there. A place it doesn't serve, or a read that fails, falls back to Pebble's own.
+
 A plugin is offered as a notes / reminders / agent destination for the Index agent when it declares
 a `create_note` / `create_reminder` / `send_to_agent` action *and* serves `notes/configured` /
 `reminders/configured` / `agent/configured`: one instance whose `configured` property is a `boolean`
@@ -178,7 +203,9 @@ hourly_temperature: {
   series carry one bitmap per point.
 - Use `start` and `stepSec` to find *now* in the series, rather than assuming `values[0]` is.
 - A series is declared as `series.<shape>`, e.g. `"hourly_temperature": ["series.numericValue",
-  "series.shortText"]`.
+  "series.shortText"]`. Any shape can be one, timestamps included: `"daily_sunrise":
+  ["series.timestamp"]` is `{ "series": { "start": …, "stepSec": 86400, "timestamp": { "values":
+  [1798354800, …] } } }`.
 - The built-in weather plugin offers `hourly_*` and `daily_*` series on `weather/location`.
 
 Shapes are designed so you can build for a *slot in your design* rather than for specific data. A

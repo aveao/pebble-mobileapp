@@ -1,7 +1,7 @@
 {
   "name": "met-weather",
   "author": "Pebble",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "pebble": {
     "displayName": "MET Norway Weather",
     "uuid": "323dc117-55bd-455f-9ee4-4d0faba56ea1",
@@ -18,7 +18,7 @@
       }
     ],
     "plugin": {
-      "description": "Weather for the user's weather locations (the phone's position for the current-location one), from the Norwegian Meteorological Institute (api.met.no), in their units. One instance per location, keyed like the built-in weather plugin's, and the hours ahead of each.",
+      "description": "Weather for the user's weather locations (the phone's position for the current-location one), from the Norwegian Meteorological Institute (api.met.no), in their units: now, the hours of today and tomorrow, the week ahead and sunrise/sunset. Enough to be the watch's weather provider (Settings → Weather).",
       "script": "plugin.js",
       "sources": [
         {
@@ -74,6 +74,56 @@
             ],
             "hourly_condition_code": [
               "series.longText"
+            ],
+            "precipitation": [
+              "numericValue",
+              "shortText"
+            ],
+            "humidity": [
+              "numericValue",
+              "shortText"
+            ],
+            "wind_speed": [
+              "numericValue",
+              "shortText"
+            ],
+            "wind_direction": [
+              "numericValue"
+            ],
+            "utc_offset": [
+              "numericValue"
+            ],
+            "sunrise": [
+              "timestamp"
+            ],
+            "sunset": [
+              "timestamp"
+            ],
+            "daily_high": [
+              "series.numericValue",
+              "series.shortText"
+            ],
+            "daily_low": [
+              "series.numericValue",
+              "series.shortText"
+            ],
+            "daily_condition": [
+              "series.shortText",
+              "series.longText",
+              "series.icon",
+              "series.image"
+            ],
+            "daily_condition_code": [
+              "series.longText"
+            ],
+            "daily_precipitation": [
+              "series.numericValue"
+            ],
+            "daily_sunrise": [
+              "series.timestamp"
+            ],
+            "daily_sunset": [
+              "series.timestamp"
             ]
           },
           "callerPermissions": [
