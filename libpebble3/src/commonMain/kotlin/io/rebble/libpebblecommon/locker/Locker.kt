@@ -124,6 +124,7 @@ class Locker(
     private val timelinePinDao = database.timelinePinDao()
     private val timelineReminderDao = database.timelineReminderDao()
     private val appPermissionDao = database.lockerAppPermissionDao()
+    private val watchPrefDao = database.watchPrefDao()
 
     companion object {
         private val logger = Logger.withTag("Locker")
@@ -491,6 +492,12 @@ class Locker(
                 backfillDeclaredPermissions()
                 settings[PREF_KEY_HAVE_BACKFILLED_DECLARED_PERMISSIONS] = true
             }
+        }
+        coroutineScope.launch {
+            watchPrefDao.getAllFlow()
+                .map { prefs -> prefs.filter { it.id.startsWith("ql") }.map { it.value } }
+                .distinctUntilChanged()
+                .collect { lockerEntryDao.updateSync(config.value.lockerSyncLimitV2) }
         }
         coroutineScope.launch {
             libPebble.watches.map { watches -> watches.filterIsInstance<ConnectedPebbleDevice>().firstOrNull() }
