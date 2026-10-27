@@ -25,6 +25,8 @@ import coredevices.database.HeartEntity
 import coredevices.database.HeartsDao
 import coredevices.firestore.PebbleUser
 import coredevices.firestore.UsersDao
+import coredevices.libindex.IndexDevices
+import coredevices.libindex.LibIndex
 import coredevices.libindex.device.IndexIdentifier
 import coredevices.pebble.PebbleDeepLinkHandler
 import coredevices.pebble.PebbleFeatures
@@ -264,6 +266,16 @@ private fun fakePebbleModule(appContext: AppContext) = module {
 
     }
     single { LockerViewModel(webServices, storeSourceDao) }
+    single<LibIndex> {
+        object : LibIndex {
+            override val isScanning = MutableStateFlow(false)
+            override fun startScan() {}
+            override fun stopScan() {}
+            override val rings: IndexDevices = MutableStateFlow(emptyList())
+            override fun warnIfNoCompanionAssociations() {}
+            override fun init(bluetoothPermissionChanged: Flow<Boolean>) {}
+        }
+    }
     single { SharedLockerViewModel() }
     single { TopChartsViewModel(storeSourceDao) }
     single { storeSourceDao } bind AppstoreSourceDao::class

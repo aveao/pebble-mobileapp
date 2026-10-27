@@ -89,6 +89,8 @@ import coreapp.pebble.generated.resources.apps
 import coredevices.database.AppstoreCollectionDao
 import coredevices.database.AppstoreSource
 import coredevices.database.AppstoreSourceDao
+import coredevices.libindex.LibIndex
+import coredevices.libindex.device.KnownIndexDevice
 import coredevices.pebble.PebbleDeepLinkHandler
 import coredevices.pebble.Platform
 import coredevices.pebble.rememberLibPebble
@@ -101,6 +103,7 @@ import coredevices.pebble.services.isPebbleFeed
 import coredevices.ui.PebbleElevatedButton
 import io.rebble.libpebblecommon.connection.AppContext
 import io.rebble.libpebblecommon.connection.ConnectedPebbleDevice
+import io.rebble.libpebblecommon.connection.KnownPebbleDevice
 import io.rebble.libpebblecommon.connection.LibPebble
 import io.rebble.libpebblecommon.permissions.InstallReview
 import io.rebble.libpebblecommon.plugin.PluginMetadata
@@ -183,6 +186,7 @@ class LockerViewModel(
     val searchListState = LazyListState()
     val searchGridState = LazyGridState()
     val type = mutableStateOf(AppType.Watchface)
+    var defaultType = AppType.Watchface
     var storeIsRefreshing by mutableStateOf(false)
     var lockerIsRefreshing by mutableStateOf(false)
 
@@ -286,6 +290,18 @@ fun LockerScreen(
                 sideload(it)
             }
         }
+        val pluginsEnabled = libPebble.config.collectAsState().value.watchConfig.enablePlugins
+        val rings by koinInject<LibIndex>().rings.collectAsState()
+        val watches by libPebble.watches.collectAsState()
+        val defaultType = if (
+            pluginsEnabled && rings.any { it is KnownIndexDevice } && watches.none { it is KnownPebbleDevice }
+        ) AppType.Plugin else AppType.Watchface
+        LaunchedEffect(defaultType) {
+            if (viewModel.defaultType != defaultType) {
+                viewModel.defaultType = defaultType
+                viewModel.type.value = defaultType
+            }
+        }
         val pendingLockerTab by deepLinks.pendingLockerTab.collectAsState()
         LaunchedEffect(pendingLockerTab) {
             pendingLockerTab?.let {
@@ -364,7 +380,7 @@ fun LockerScreen(
                         viewModel.searchState.typing = false
                         viewModel.searchState.query = ""
                     } else {
-                        viewModel.type.value = AppType.Watchface
+                        viewModel.type.value = viewModel.defaultType
                     }
                 }
             }
