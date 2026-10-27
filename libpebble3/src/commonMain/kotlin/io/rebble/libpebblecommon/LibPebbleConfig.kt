@@ -106,6 +106,8 @@ data class WatchConfig(
     val permissionPolicy: PermissionPolicy = PermissionPolicy.AskIfExfiltrating,
     /** When false, legacy apps keep what they had before permissions (see `isLegacyImplicit`). */
     val askLegacyAppsForPermissions: Boolean = false,
+    /** Ask the watch to report which notification it is displaying. Sent on connection. */
+    val notificationWindowState: Boolean = false,
 )
 
 class WatchConfigFlow(val flow: StateFlow<LibPebbleConfig>) {

@@ -26,6 +26,7 @@ import coredevices.util.isAndroid
 import dev.gitlive.firebase.Firebase
 import dev.gitlive.firebase.auth.FirebaseUser
 import dev.gitlive.firebase.auth.auth
+import io.rebble.libpebblecommon.connection.LibPebble
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
@@ -67,6 +68,7 @@ class ExperimentalDevices(
     private val platform: Platform,
     private val targetCalendarSeeder: TargetCalendarSeeder,
     private val indexNotificationManager: IndexNotificationManager,
+    private val libPebble: LibPebble,
 ) {
     private val scope = CoroutineScope(Dispatchers.Default)
     fun appInit() {
@@ -108,6 +110,16 @@ class ExperimentalDevices(
         ringDelegate.init()
         scope.launch { targetCalendarSeeder.seedIfNeeded() }
         scope.launch { indexNotificationManager.notifyLegacyDestinationUse() }
+        scope.launch {
+            preferences.ringPaired.map { it != null }.distinctUntilChanged().collect { paired ->
+                val config = libPebble.config.value
+                if (config.watchConfig.notificationWindowState != paired) {
+                    libPebble.updateConfig(
+                        config.copy(watchConfig = config.watchConfig.copy(notificationWindowState = paired))
+                    )
+                }
+            }
+        }
         if (preferences.ringPairedOld.value && preferences.ringPaired.value == null) {
             // Prompt user to re-pair to migrate
             NotifierManager.getLocalNotifier().notify {
