@@ -249,6 +249,10 @@ fun LockerAppScreen(topBarParams: TopBarParams, uuid: Uuid?, navBarNav: NavBarNa
                         title = "Remove ${entry.title}?",
                         text = "Are you sure you want to remove this app from your Pebble?",
                         onConfirm = {
+                            // Store apps stay here to show the store listing; nothing to show otherwise
+                            if (viewModel.selectedStoreEntry == null) {
+                                navBarNav.goBack()
+                            }
                             // Don't use local scope: that will die because we moved back
                             GlobalScope.launch {
                                 logger.d { "removing app ${entry.uuid}" }
