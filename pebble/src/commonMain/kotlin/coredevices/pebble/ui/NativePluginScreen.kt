@@ -76,7 +76,8 @@ fun PluginMetadata.builtInIcon(): ImageVector = when (pluginUuid) {
 }
 
 fun PluginMetadata.settingsRoute(): NavBarRoute? = when (pluginUuid) {
-    WeatherPlugin.BUILT_IN_WEATHER_UUID -> PebbleNavBarRoutes.WeatherRoute
+    WeatherPlugin.BUILT_IN_WEATHER_UUID ->
+        PebbleNavBarRoutes.WatchSettingsCategoryRoute(section = Section.Weather.name, topLevelType = TopLevelType.Phone.name)
     CalendarPlugin.BUILT_IN_CALENDAR_UUID -> PebbleNavBarRoutes.CalendarsRoute
     PreferencesPlugin.BUILT_IN_PREFERENCES_UUID -> PebbleNavBarRoutes.ComplicationsRoute
     else -> null
