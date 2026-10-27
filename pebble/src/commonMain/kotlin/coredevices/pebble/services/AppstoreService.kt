@@ -415,7 +415,8 @@ class AppstoreService(
             logger.w(e) { "Error loading app store home" }
             return null
         }
-        val cleaned = rawHome?.withPluginDataApps(type, hardwarePlatform)?.copy(applications = rawHome.applications.filter { app ->
+        val home = rawHome?.withPluginDataApps(type, hardwarePlatform)
+        val cleaned = home?.copy(applications = home.applications.filter { app ->
             if (app.uuid == null) return@filter false
             try {
                 if (Uuid.parse(app.uuid) == Uuid.NIL) {
