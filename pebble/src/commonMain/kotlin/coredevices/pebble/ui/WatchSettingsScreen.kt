@@ -105,6 +105,7 @@ import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
@@ -1487,6 +1488,7 @@ fun rememberSettingsItemsState(navBarNav: NavBarNav?, snackbarDisplay: SnackbarD
                         },
                         itemText = { it?.let { plugin -> "Plugin: ${plugin.name}" } ?: "Pebble" },
                         show = { coreConfig.fetchWeather && libPebbleConfig.watchConfig.enablePlugins && providers.isNotEmpty() },
+                        selectorBelow = true,
                     )
                 },
                 basicSettingsDropdownItem(
@@ -1596,6 +1598,7 @@ fun rememberSettingsItemsState(navBarNav: NavBarNav?, snackbarDisplay: SnackbarD
                     keywords = "cactus stt speech recognition offline rebble",
                     topLevelType = TopLevelType.Phone,
                     section = Section.Speech,
+                    selectorBelow = true,
                     items = CactusSTTMode.entries.filter { mode ->
                         when (mode) {
                             CactusSTTMode.RebbleOnly,
@@ -2937,7 +2940,8 @@ fun <T> basicSettingsDropdownItem(
                     Text(
                         text = itemText(selectedItem),
                         modifier = if (selectorBelow) Modifier else Modifier.widthIn(max = 130.dp),
-                        maxLines = 2,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
                     )
                     Icon(Icons.Default.ArrowDropDown, contentDescription = null)
                 }
