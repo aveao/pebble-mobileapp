@@ -13,6 +13,7 @@ import coredevices.ring.agent.integrations.providers.visibleDestinations
 import coredevices.ring.agent.pebble_plugin.PluginGrant
 import coredevices.ring.agent.pebble_plugin.PluginStore
 import coredevices.ring.agent.pebble_plugin.StorePlugin
+import coredevices.ring.agent.pebble_plugin.uninstalledIndexPlugins
 import coredevices.ring.database.Preferences
 import coredevices.ring.database.room.repository.McpServerRepository
 import coredevices.ring.service.button.GestureRoutingPreferences
@@ -22,7 +23,6 @@ import coredevices.util.flow.mapState
 import coredevices.util.isAndroid
 import io.rebble.libpebblecommon.permissions.InstallReview
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.IO
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -30,12 +30,8 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.flatMapLatest
-import kotlinx.coroutines.flow.flow
-import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
-import kotlinx.coroutines.flow.shareIn
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlin.uuid.Uuid
@@ -45,7 +41,6 @@ import kotlin.uuid.Uuid
  * notes and reminders are saved. The locker is reached through [lockerUuids] so the
  * view model does not need the whole of LibPebble.
  */
-@OptIn(ExperimentalCoroutinesApi::class)
 class IndexActionsViewModel(
     private val indexActionsRepository: IndexActionsRepository,
     private val mcpServerRepository: McpServerRepository,
@@ -110,21 +105,8 @@ class IndexActionsViewModel(
     val noteDestinationProviders = destinationProviders(IntegrationSupport.Note)
     val reminderDestinationProviders = destinationProviders(IntegrationSupport.Reminder)
 
-    // Fetched once per screen: the list only changes when the store does.
-    private val indexStorePlugins = flow { emit(pluginStore.indexPlugins().orEmpty()) }
-        .shareIn(viewModelScope, SharingStarted.Lazily, replay = 1)
-
-    /** Store plugins not in the locker yet, offered as destinations while plugins are on. */
-    val storePlugins: StateFlow<List<StorePlugin>> = pluginsEnabled
-        .flatMapLatest { pluginsOn ->
-            if (!pluginsOn) {
-                flowOf(emptyList())
-            } else {
-                combine(indexStorePlugins, lockerUuids) { listed, installed ->
-                    listed.filter { it.pluginUuid !in installed }
-                }
-            }
-        }
+    val storePlugins: StateFlow<List<StorePlugin>> = pluginStore
+        .uninstalledIndexPlugins(viewModelScope, pluginsEnabled, lockerUuids)
         .stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
     /** Plugins with a locker page; built-in plugins have none to configure from. */
     val lockerPlugins: StateFlow<Set<Uuid>> = lockerUuids

@@ -2,15 +2,18 @@ package coredevices.ring.ui.screens.settings
 
 import coredevices.ring.agent.integrations.providers.IntegrationProvider
 import coredevices.ring.agent.integrations.providers.IntegrationSupport
+import coredevices.ring.agent.pebble_plugin.StorePlugin
 import coredevices.ring.external.indexwebhook.IndexWebhookConfig
 import coredevices.ring.service.button.GestureDestination
 import coredevices.ring.service.button.GestureKind
 import coredevices.ring.service.button.RingGesture
 import coredevices.ring.service.button.accepts
+import io.rebble.libpebblecommon.plugin.PluginMetadata
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
+import kotlin.uuid.Uuid
 
 class ButtonSwitchboardTest {
 
@@ -61,27 +64,42 @@ class ButtonSwitchboardTest {
     }
 
     @Test
-    fun agentPluginsAreOfferedAfterTheIndexAgents() {
+    fun agentPluginRoutesAreValidForRecordingGesturesAndKeepTheSheetOpen() {
         val claude = GestureDestination.AgentPlugin("plugin:claude")
-        val codex = GestureDestination.AgentPlugin("plugin:codex")
 
-        assertEquals(
-            listOf(
-                GestureDestination.IndexAgent,
-                GestureDestination.LocalAgent,
-                claude,
-                codex,
-                GestureDestination.WebSearch,
-                GestureDestination.WebhookOnly,
-                GestureDestination.Nothing,
-            ),
-            destinationsFor(GestureKind.Recording, listOf(claude, codex)),
-        )
-        assertEquals(destinationsFor(GestureKind.Music), destinationsFor(GestureKind.Music, listOf(claude)))
+        assertFalse(claude in destinationsFor(GestureKind.Recording))
         RingGesture.entries.filter { it.kind == GestureKind.Recording }.forEach {
             assertTrue(it.accepts(claude))
             assertTrue(gestureSheetStaysOpenFor(it, claude))
         }
+    }
+
+    @Test
+    fun otherAgentsListInstalledPluginsThenTheStores() {
+        val claude = AgentPluginOption(FakeAgentProvider("plugin:claude", "Claude"), connected = true)
+        val codex = AgentPluginOption(FakeAgentProvider("plugin:codex", "Codex"), connected = false)
+        val things = storePlugin("Things")
+
+        assertEquals(
+            listOf(OtherAgentRow.Installed(claude), OtherAgentRow.Installed(codex), OtherAgentRow.Store(things)),
+            otherAgentRows(GestureDestination.IndexAgent, listOf(claude, codex), listOf(things)),
+        )
+        assertEquals(emptyList(), otherAgentRows(GestureDestination.IndexAgent, emptyList(), emptyList()))
+    }
+
+    @Test
+    fun aRouteToAnUninstalledAgentStaysListedSoItCanBeChanged() {
+        val claude = AgentPluginOption(FakeAgentProvider("plugin:claude", "Claude"), connected = true)
+        val gone = GestureDestination.AgentPlugin("plugin:gone")
+
+        assertEquals(
+            listOf(OtherAgentRow.Installed(claude), OtherAgentRow.Missing(gone)),
+            otherAgentRows(gone, listOf(claude), emptyList()),
+        )
+        assertEquals(
+            listOf(OtherAgentRow.Installed(claude)),
+            otherAgentRows(claude.destination, listOf(claude), emptyList()),
+        )
     }
 
     @Test
@@ -153,6 +171,17 @@ class ButtonSwitchboardTest {
             .flatMap { destinationsFor(it) }
             .forEach { assertTrue(it.tileLabel.isNotBlank(), "$it has no tile label") }
     }
+
+    private fun storePlugin(name: String) = StorePlugin(
+        metadata = PluginMetadata(
+            pluginUuid = Uuid.parse("00000000-0000-0000-0002-000000000001"),
+            name = name,
+            description = "",
+            sources = emptyList(),
+            actions = emptyList(),
+        ),
+        configurable = false,
+    )
 
     private class FakeAgentProvider(override val id: String, override val title: String) : IntegrationProvider {
         override val supports = setOf(IntegrationSupport.Agent)

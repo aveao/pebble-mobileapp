@@ -8,6 +8,9 @@ import coredevices.ring.agent.integrations.providers.IntegrationProviderReposito
 import coredevices.ring.agent.integrations.providers.IntegrationSupport
 import coredevices.ring.agent.integrations.providers.availableDestinations
 import coredevices.ring.agent.integrations.providers.visibleDestinations
+import coredevices.ring.agent.pebble_plugin.PluginStore
+import coredevices.ring.agent.pebble_plugin.StorePlugin
+import coredevices.ring.agent.pebble_plugin.uninstalledIndexPlugins
 import coredevices.ring.external.indexwebhook.IndexWebhookPreferences
 import coredevices.ring.service.button.GestureDestination
 import coredevices.ring.service.button.GestureRoutingPreferences
@@ -15,12 +18,16 @@ import coredevices.ring.service.button.RingGesture
 import coredevices.util.Platform
 import coredevices.util.isAndroid
 import coredevices.util.transcription.CactusModelPathProvider
+import io.rebble.libpebblecommon.permissions.InstallReview
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlin.uuid.Uuid
 
 /** State for the Ring Button switchboard: per-gesture routes, their webhook copies and the agent plugins on offer. */
 class RingButtonViewModel(
@@ -30,7 +37,9 @@ class RingButtonViewModel(
     private val appScope: LibIndexCoroutineScope,
     platform: Platform,
     private val providers: IntegrationProviderRepository,
+    private val pluginStore: PluginStore,
     pluginsEnabled: StateFlow<Boolean>,
+    lockerUuids: Flow<List<Uuid>>,
 ) : ViewModel() {
     val gestureRoutes = gestureRouting.routes
     val gestureCommands = gestureRouting.commands
@@ -50,9 +59,23 @@ class RingButtonViewModel(
         .availableDestinations(IntegrationSupport.Agent, pluginsEnabled, providerRefresh)
         .stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
+    /** Store plugins that could take a recording once installed, offered after [agentProviders]. */
+    val storeAgentPlugins: StateFlow<List<StorePlugin>> = pluginStore
+        .uninstalledIndexPlugins(viewModelScope, pluginsEnabled, lockerUuids)
+        .map { plugins -> plugins.filter { IntegrationSupport.Agent in it.supports } }
+        .stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+
     /** Plugins connect from their own settings page, so re-check whenever the switchboard shows. */
     fun refreshAgentDestinations() {
         providerRefresh.value++
+    }
+
+    suspend fun reviewInstall(plugin: StorePlugin): InstallReview? = pluginStore.reviewInstall(plugin.pluginUuid)
+
+    suspend fun installStorePlugin(plugin: StorePlugin, granted: Map<String, Boolean?>): Boolean {
+        val installed = pluginStore.install(plugin.pluginUuid, granted)
+        refreshAgentDestinations()
+        return installed
     }
 
     fun setGestureRoute(gesture: RingGesture, destination: GestureDestination) {

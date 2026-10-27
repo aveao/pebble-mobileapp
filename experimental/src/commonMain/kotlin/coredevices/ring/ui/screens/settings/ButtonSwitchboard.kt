@@ -1,5 +1,11 @@
 package coredevices.ring.ui.screens.settings
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -21,8 +27,10 @@ import androidx.compose.material.icons.filled.Block
 import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.GraphicEq
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Power
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.SettingsEthernet
 import androidx.compose.material.icons.filled.SkipNext
@@ -47,6 +55,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
@@ -59,6 +68,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coredevices.ring.agent.integrations.providers.IntegrationProvider
+import coredevices.ring.agent.pebble_plugin.StorePlugin
 import coredevices.ring.external.indexwebhook.IndexWebhookConfig
 import coredevices.ring.service.button.GestureDestination
 import coredevices.ring.service.button.GestureKind
@@ -96,11 +106,33 @@ data class AgentPluginOption(val provider: IntegrationProvider, val connected: B
 
 fun List<AgentPluginOption>.titles(): Map<String, String> = associate { it.provider.id to it.provider.title }
 
-/** [agentPlugins] are the installed agent plugins, offered after the Index agents. [musicControl] is
- *  false where the platform can't control media; clicks can still go to a webhook or agent command. */
+/** One row of the "Other agents" group in the destination sheet. */
+sealed interface OtherAgentRow {
+    /** An installed agent plugin; only a connected one can be picked, the rest offer Connect. */
+    data class Installed(val option: AgentPluginOption) : OtherAgentRow
+    /** The current route to a plugin that has since been uninstalled, kept so it can be changed. */
+    data class Missing(val destination: GestureDestination.AgentPlugin) : OtherAgentRow
+    /** A store plugin not installed yet; Connect installs it. */
+    data class Store(val plugin: StorePlugin) : OtherAgentRow
+}
+
+/** Installed agent plugins first, then the store's, with [current] kept in between if its plugin is gone. */
+fun otherAgentRows(
+    current: GestureDestination,
+    installed: List<AgentPluginOption>,
+    store: List<StorePlugin>,
+): List<OtherAgentRow> {
+    val missing = (current as? GestureDestination.AgentPlugin)
+        ?.takeIf { route -> installed.none { it.destination == route } }
+    return installed.map { OtherAgentRow.Installed(it) } +
+        listOfNotNull(missing?.let { OtherAgentRow.Missing(it) }) +
+        store.map { OtherAgentRow.Store(it) }
+}
+
+/** Agent plugins are not listed here: the sheet groups them under "Other agents" after [GestureDestination.LocalAgent].
+ *  [musicControl] is false where the platform can't control media; clicks can still go to a webhook or agent command. */
 fun destinationsFor(
     kind: GestureKind,
-    agentPlugins: List<GestureDestination.AgentPlugin> = emptyList(),
     musicControl: Boolean = true,
 ): List<GestureDestination> = when (kind) {
     GestureKind.Music -> listOfNotNull(
@@ -114,7 +146,6 @@ fun destinationsFor(
     GestureKind.Recording -> listOf(
         GestureDestination.IndexAgent,
         GestureDestination.LocalAgent,
-    ) + agentPlugins + listOf(
         GestureDestination.WebSearch,
         GestureDestination.WebhookOnly,
         GestureDestination.Nothing,
@@ -163,7 +194,6 @@ private val GestureDestination.optionSub: String?
         GestureDestination.LocalAgent -> "Runs on this phone only. Experimental, supports fewer actions"
         GestureDestination.WebSearch -> "Answer lands in your feed"
         GestureDestination.WebhookOnly -> "Raw recording to your endpoint, nothing else"
-        is GestureDestination.AgentPlugin -> "What you say goes straight to this agent"
         GestureDestination.Webhook -> "Click count and your payload to your endpoint"
         GestureDestination.AgentCommand -> "Sends a command, eg \"Unlock front door\""
         else -> null
@@ -194,7 +224,9 @@ internal fun ButtonSwitchboard(
     onOpenWebhookSettings: (RingGesture) -> Unit,
     onDisableWebhook: (RingGesture) -> Unit,
     agentPlugins: List<AgentPluginOption> = emptyList(),
+    storeAgentPlugins: List<StorePlugin> = emptyList(),
     onConnectAgentPlugin: (IntegrationProvider) -> Unit = {},
+    onInstallAgentPlugin: (StorePlugin) -> Unit = {},
 ) {
     var sheetGesture by remember { mutableStateOf<RingGesture?>(null) }
     val webhookCopies = { gesture: RingGesture -> webhookConfigFor(gesture).isActive }
@@ -233,6 +265,7 @@ internal fun ButtonSwitchboard(
             gesture = gesture,
             current = routes[gesture] ?: GestureDestination.Nothing,
             agentPlugins = agentPlugins,
+            storeAgentPlugins = storeAgentPlugins,
             musicControl = musicEnabled,
             command = commands[gesture].orEmpty(),
             onSetCommand = { onSetCommand(gesture, it) },
@@ -245,6 +278,10 @@ internal fun ButtonSwitchboard(
             onConnectAgentPlugin = {
                 sheetGesture = null
                 onConnectAgentPlugin(it)
+            },
+            onInstallAgentPlugin = {
+                sheetGesture = null
+                onInstallAgentPlugin(it)
             },
             onOpenWebhookSettings = {
                 sheetGesture = null
@@ -409,6 +446,7 @@ private fun GestureDestinationSheet(
     gesture: RingGesture,
     current: GestureDestination,
     agentPlugins: List<AgentPluginOption>,
+    storeAgentPlugins: List<StorePlugin>,
     musicControl: Boolean,
     command: String,
     onSetCommand: (String) -> Unit,
@@ -416,6 +454,7 @@ private fun GestureDestinationSheet(
     webhookCopyOn: Boolean,
     onSelect: (GestureDestination) -> Unit,
     onConnectAgentPlugin: (IntegrationProvider) -> Unit,
+    onInstallAgentPlugin: (StorePlugin) -> Unit,
     onOpenWebhookSettings: () -> Unit,
     onSetWebhookCopy: (Boolean) -> Unit,
     onDismiss: () -> Unit,
@@ -449,26 +488,31 @@ private fun GestureDestinationSheet(
             )
         }
         val agentTitles = agentPlugins.titles()
-        val unconnected = agentPlugins.filterNot { it.connected }.associateBy { it.destination }
-        // A route to a plugin that has since been uninstalled stays listed so it can be changed.
-        val options = destinationsFor(gesture.kind, agentPlugins.map { it.destination }, musicControl).let {
-            if (current is GestureDestination.AgentPlugin && current !in it) it + current else it
-        }
-        options.forEach { option ->
-            val plugin = unconnected[option]
-            DestinationOption(
-                option = option,
-                agentTitles = agentTitles,
-                subtitle = if (plugin != null) "Not connected" else option.optionSub,
+        val otherAgents = otherAgentRows(current, agentPlugins, storeAgentPlugins)
+        destinationsFor(gesture.kind, musicControl).forEach { option ->
+            SheetChoiceRow(
+                icon = option.icon,
+                title = option.optionLabel(agentTitles),
+                subtitle = option.optionSub,
                 selected = option == current,
                 onClick = {
                     commitCommand()
-                    if (plugin != null) onConnectAgentPlugin(plugin.provider) else onSelect(option)
-                },
-                trailing = if (plugin == null) null else {
-                    { TextButton(onClick = { onConnectAgentPlugin(plugin.provider) }) { Text("Connect") } }
+                    onSelect(option)
                 },
             )
+            if (option == GestureDestination.LocalAgent && otherAgents.isNotEmpty()) {
+                OtherAgentsGroup(
+                    rows = otherAgents,
+                    current = current,
+                    agentTitles = agentTitles,
+                    onSelect = {
+                        commitCommand()
+                        onSelect(it)
+                    },
+                    onConnect = onConnectAgentPlugin,
+                    onInstall = onInstallAgentPlugin,
+                )
+            }
         }
         if (current == GestureDestination.AgentCommand) {
             OutlinedTextField(
@@ -525,18 +569,111 @@ private fun GestureDestinationSheet(
     }
 }
 
+/** Agent plugins folded into one row: installed ones, then the store's, each a tap away from connecting. */
 @Composable
-private fun DestinationOption(
-    option: GestureDestination,
+private fun OtherAgentsGroup(
+    rows: List<OtherAgentRow>,
+    current: GestureDestination,
     agentTitles: Map<String, String>,
+    onSelect: (GestureDestination) -> Unit,
+    onConnect: (IntegrationProvider) -> Unit,
+    onInstall: (StorePlugin) -> Unit,
+) {
+    val colors = IndexTheme.colors
+    val routed = current as? GestureDestination.AgentPlugin
+    var expanded by remember { mutableStateOf(routed != null) }
+    val chevron by animateFloatAsState(if (expanded) 180f else 0f)
+    SheetChoiceRow(
+        icon = Icons.AutoMirrored.Filled.Send,
+        title = "Other agents",
+        subtitle = routed?.tileLabel(agentTitles) ?: "What you say goes straight to the agent you pick",
+        selected = routed != null && !expanded,
+        onClick = { expanded = !expanded },
+        trailing = {
+            Icon(
+                Icons.Default.ExpandMore,
+                contentDescription = null,
+                tint = colors.onSurfaceVariant,
+                modifier = Modifier.size(20.dp).rotate(chevron),
+            )
+        },
+    )
+    AnimatedVisibility(
+        visible = expanded,
+        enter = expandVertically() + fadeIn(),
+        exit = shrinkVertically() + fadeOut(),
+    ) {
+        Column {
+            rows.forEach { row ->
+                when (row) {
+                    is OtherAgentRow.Installed -> {
+                        val option = row.option
+                        val connect = { onConnect(option.provider) }
+                        OtherAgentChoiceRow(
+                            title = option.provider.title,
+                            subtitle = if (option.connected) null else "Not connected",
+                            selected = option.destination == current,
+                            onClick = { if (option.connected) onSelect(option.destination) else connect() },
+                            onConnect = connect.takeUnless { option.connected },
+                        )
+                    }
+                    is OtherAgentRow.Missing -> OtherAgentChoiceRow(
+                        title = row.destination.tileLabel(agentTitles),
+                        subtitle = "No longer installed",
+                        selected = true,
+                        onClick = {},
+                        onConnect = null,
+                    )
+                    is OtherAgentRow.Store -> {
+                        val install = { onInstall(row.plugin) }
+                        OtherAgentChoiceRow(
+                            title = row.plugin.title,
+                            subtitle = "Not connected",
+                            selected = false,
+                            onClick = install,
+                            onConnect = install,
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun OtherAgentChoiceRow(
+    title: String,
+    subtitle: String?,
+    selected: Boolean,
+    onClick: () -> Unit,
+    onConnect: (() -> Unit)?,
+) {
+    SheetChoiceRow(
+        icon = Icons.Default.Power,
+        title = title,
+        subtitle = subtitle,
+        selected = selected,
+        onClick = onClick,
+        trailing = if (onConnect == null) null else {
+            { TextButton(onClick = onConnect) { Text("Connect") } }
+        },
+        modifier = Modifier.padding(start = 34.dp),
+    )
+}
+
+@Composable
+private fun SheetChoiceRow(
+    icon: ImageVector,
+    title: String,
     subtitle: String?,
     selected: Boolean,
     onClick: () -> Unit,
     trailing: (@Composable () -> Unit)? = null,
+    modifier: Modifier = Modifier,
 ) {
     val colors = IndexTheme.colors
     Row(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .padding(horizontal = 8.dp)
             .clip(RoundedCornerShape(12.dp))
@@ -547,14 +684,14 @@ private fun DestinationOption(
         horizontalArrangement = Arrangement.spacedBy(14.dp),
     ) {
         Icon(
-            option.icon,
+            icon,
             contentDescription = null,
             tint = if (selected) colors.primary
             else colors.onSurfaceVariant,
             modifier = Modifier.size(20.dp),
         )
         Column(modifier = Modifier.weight(1f)) {
-            Text(option.optionLabel(agentTitles), fontSize = 15.sp, color = colors.onSurface)
+            Text(title, fontSize = 15.sp, color = colors.onSurface)
             subtitle?.let {
                 Text(it, fontSize = 12.sp, color = colors.onSurfaceVariant)
             }

@@ -59,7 +59,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withCompositionLocal
 import androidx.compose.ui.Alignment
@@ -95,7 +94,6 @@ import coredevices.ring.agent.integrations.providers.IntegrationProvider
 import coredevices.ring.agent.integrations.providers.IntegrationSupport
 import coredevices.ring.agent.pebble_plugin.PblPluginIntegrationProvider
 import coredevices.ring.agent.pebble_plugin.PluginGrant
-import coredevices.ring.agent.pebble_plugin.PluginStore
 import coredevices.ring.agent.pebble_plugin.StorePlugin
 import coredevices.indexai.data.entity.mcp.HttpMcpServerEntity
 import coredevices.ring.service.button.GestureDestination
@@ -106,8 +104,6 @@ import coredevices.ring.ui.theme.IndexTheme
 import coredevices.ring.ui.theme.toggleButtonColors
 import coredevices.ui.M3Dialog
 import io.rebble.libpebblecommon.permissions.InstallReview
-import kotlinx.coroutines.launch
-import org.koin.compose.koinInject
 import kotlin.uuid.Uuid
 
 /** Actions are only reachable through an Index agent, so they are off when no gesture routes to one. */
@@ -326,33 +322,14 @@ internal fun IndexActionsSection(
     }
 
     val colors = IndexTheme.colors
-    val scope = rememberCoroutineScope()
 
     var sheet by remember { mutableStateOf<ActionsSheet?>(null) }
     var dialog by remember { mutableStateOf<ActionsDialog?>(null) }
     var editingServer by remember { mutableStateOf<HttpMcpServerEntity?>(null) }
-    var storeReview by remember { mutableStateOf<Pair<StorePlugin, InstallReview>?>(null) }
-    var installFailed by remember { mutableStateOf<StorePlugin?>(null) }
+    val installer = rememberStorePluginInstaller(onReviewInstall, onInstallStorePlugin, onConfigurePlugin)
     val closeConnectDialog = {
         dialog = null
         onProvidersChanged()
-    }
-
-    // Installing from the sheet behaves like connecting an installed plugin: the config page opens.
-    fun installStorePlugin(plugin: StorePlugin, granted: Map<String, Boolean?>) {
-        scope.launch {
-            if (!onInstallStorePlugin(plugin, granted)) {
-                installFailed = plugin
-            } else if (plugin.configurable) {
-                onConfigurePlugin(plugin.pluginUuid, plugin.title)
-            }
-        }
-    }
-    fun connectStorePlugin(plugin: StorePlugin) {
-        scope.launch {
-            val review = onReviewInstall(plugin)
-            if (review == null) installStorePlugin(plugin, emptyMap()) else storeReview = plugin to review
-        }
     }
 
     Column(modifier = Modifier.fillMaxWidth()) {
@@ -501,7 +478,7 @@ internal fun IndexActionsSection(
             },
             onInstall = { plugin ->
                 onNoteConnectStarted(PblPluginIntegrationProvider.idFor(plugin.pluginUuid))
-                connectStorePlugin(plugin)
+                installer.install(plugin)
             },
             onConfigure = { provider ->
                 when (provider) {
@@ -529,7 +506,7 @@ internal fun IndexActionsSection(
             },
             onInstall = { plugin ->
                 onReminderConnectStarted(PblPluginIntegrationProvider.idFor(plugin.pluginUuid))
-                connectStorePlugin(plugin)
+                installer.install(plugin)
             },
             onConfigure = { provider ->
                 if (provider is PblPluginIntegrationProvider) onOpenPluginPage(provider.pluginUuid)
@@ -539,26 +516,7 @@ internal fun IndexActionsSection(
         null -> {}
     }
 
-    storeReview?.let { (plugin, review) ->
-        koinInject<PluginStore>().ReviewInstallDialog(review) { granted ->
-            storeReview = null
-            if (granted != null) installStorePlugin(plugin, granted)
-        }
-    }
-    installFailed?.let { plugin ->
-        M3Dialog(
-            onDismissRequest = { installFailed = null },
-            title = { Text("Couldn't add ${plugin.title}") },
-            buttons = { TextButton(onClick = { installFailed = null }) { Text("OK") } },
-        ) {
-            Text(
-                "Check your connection and try again.",
-                fontSize = 14.sp,
-                lineHeight = 20.sp,
-                color = colors.onSurfaceVariant,
-            )
-        }
-    }
+    installer.Dialogs()
 
     editingServer?.let { server ->
         HttpServerEditDialog(

@@ -15,6 +15,7 @@ import coredevices.ring.ui.viewmodel.IndexActionsViewModel
 import coredevices.ring.ui.viewmodel.RingButtonViewModel
 import io.rebble.libpebblecommon.locker.AppType
 import org.koin.compose.viewmodel.koinViewModel
+import kotlin.uuid.Uuid
 
 /**
  * The Ring Button switchboard with its settings state.
@@ -30,9 +31,19 @@ fun RingButtonSection(coreNav: CoreNav, viewModel: RingButtonViewModel = koinVie
     val webhookConfigs by viewModel.webhookConfigs.collectAsState()
     val agentProviders by viewModel.agentProviders.collectAsState()
     val connectedAgentProviders by viewModel.connectedAgentProviders.collectAsState()
+    val storeAgentPlugins by viewModel.storeAgentPlugins.collectAsState()
     val agentPlugins = agentProviders.map { AgentPluginOption(it, connected = it in connectedAgentProviders) }
+    val configurePlugin: (Uuid, String) -> Unit = { uuid, title ->
+        coreNav.navigateTo(CommonRoutes.WatchappSettingsRoute(uuid = uuid.toString(), title = title))
+    }
+    val installer = rememberStorePluginInstaller(
+        reviewInstall = viewModel::reviewInstall,
+        installPlugin = viewModel::installStorePlugin,
+        onConfigurePlugin = configurePlugin,
+    )
 
     LaunchedEffect(Unit) { viewModel.refreshAgentDestinations() }
+    installer.Dialogs()
     ButtonSwitchboard(
         routes = gestureRoutes,
         commands = gestureCommands,
@@ -43,11 +54,11 @@ fun RingButtonSection(coreNav: CoreNav, viewModel: RingButtonViewModel = koinVie
         onOpenWebhookSettings = { webhookViewModel.openDialog(it) },
         onDisableWebhook = viewModel::disableWebhook,
         agentPlugins = agentPlugins,
+        storeAgentPlugins = storeAgentPlugins,
         onConnectAgentPlugin = { provider ->
-            if (provider is PblPluginIntegrationProvider) {
-                coreNav.navigateTo(CommonRoutes.WatchappSettingsRoute(uuid = provider.pluginUuid.toString(), title = provider.title))
-            }
+            if (provider is PblPluginIntegrationProvider) configurePlugin(provider.pluginUuid, provider.title)
         },
+        onInstallAgentPlugin = installer::install,
     )
 }
 

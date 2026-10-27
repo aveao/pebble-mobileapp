@@ -43,6 +43,7 @@ internal val viewmodelModule = module {
         )
     }
     viewModel {
+        val libPebble = get<LibPebble>()
         RingButtonViewModel(
             gestureRouting = get(),
             webhookPreferences = get(),
@@ -50,7 +51,9 @@ internal val viewmodelModule = module {
             appScope = get(),
             platform = get(),
             providers = get(),
-            pluginsEnabled = get<LibPebble>().pluginsEnabled(),
+            pluginStore = get(),
+            pluginsEnabled = libPebble.pluginsEnabled(),
+            lockerUuids = libPebble.getAllLockerUuids(),
         )
     }
     viewModelOf(::BackupViewModel)
