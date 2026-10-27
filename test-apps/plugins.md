@@ -716,11 +716,9 @@ in v1.15.0 (along with several other parts of the API).
 
 We're planning:
 
-- Tooling support: `pebble build` and the Pebble tool (in progress), and CloudPebble.
 - More extensive documentation.
 - A watch-side (C / Alloy) API, so apps can use plugins without any phone-side JS.
 - A way to cache images on the watch (the Weather and Complication demo faces need a phone
   connection to display images after restarting, right now)
 - PebbleKit-Android plugin support.
-- Publishing plugins to the app store (it can already list them, but uploads aren't open yet).
 - More built-in plugins exposing more things.
