@@ -6,6 +6,7 @@ import CoreAppVersion
 import NextBugReportContext
 import PlatformUiContext
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -26,7 +27,9 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.automirrored.filled.DirectionsRun
@@ -34,6 +37,7 @@ import androidx.compose.material.icons.automirrored.filled.Launch
 import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Apps
+import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.BatteryFull
 import androidx.compose.material.icons.filled.BugReport
 import androidx.compose.material.icons.filled.CalendarMonth
@@ -58,6 +62,8 @@ import androidx.compose.material.icons.filled.Timeline
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material.icons.filled.Watch
 import androidx.compose.material.icons.filled.Wifi
+import androidx.compose.material.icons.outlined.Info
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Badge
 import androidx.compose.material3.Card
 import androidx.compose.material3.Checkbox
@@ -67,6 +73,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
@@ -188,6 +195,7 @@ import kotlin.time.Duration
 import kotlin.time.Duration.Companion.hours
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Instant
+import theme.coreOrange
 
 enum class TopLevelType(val displayName: String) {
     Phone("Phone"),
@@ -2053,6 +2061,7 @@ fun rememberSettingsItemsState(navBarNav: NavBarNav?, snackbarDisplay: SnackbarD
                     itemText = { it.displayName() },
                     show = { libPebbleConfig.watchConfig.enablePlugins },
                     selectorBelow = true,
+                    details = { PermissionPolicyDetails() },
                 ),
                 basicSettingsToggleItem(
                     title = "Legacy PebbleKit",
@@ -2879,6 +2888,8 @@ fun <T> basicSettingsDropdownItem(
     extraSupportingContent: (@Composable () -> Unit)? = null,
     /** Under the description rather than beside the title, for long values. */
     selectorBelow: Boolean = false,
+    /** Shown in a popup from an info button beside the title. */
+    details: (@Composable () -> Unit)? = null,
 ) = SettingsItem(
     id = id,
     title = title,
@@ -2888,15 +2899,20 @@ fun <T> basicSettingsDropdownItem(
     show = show,
     isDebugSetting = isDebugSetting,
     item = {
+        var expanded by remember { mutableStateOf(false) }
         val selector: @Composable () -> Unit = {
-            var expanded by remember { mutableStateOf(false) }
             Box {
-                TextButton(onClick = { expanded = true }) {
+                OutlinedButton(
+                    onClick = { expanded = true },
+                    contentPadding = PaddingValues(start = 12.dp, end = 4.dp),
+                    border = BorderStroke(1.dp, coreOrange),
+                ) {
                     Text(
                         text = itemText(selectedItem),
-                        modifier = if (selectorBelow) Modifier else Modifier.widthIn(max = 150.dp),
+                        modifier = if (selectorBelow) Modifier else Modifier.widthIn(max = 130.dp),
                         maxLines = 2,
                     )
+                    Icon(Icons.Default.ArrowDropDown, contentDescription = null)
                 }
                 DropdownMenu(
                     expanded = expanded,
@@ -2914,9 +2930,25 @@ fun <T> basicSettingsDropdownItem(
                 }
             }
         }
+        var showingDetails by remember { mutableStateOf(false) }
+        if (showingDetails && details != null) {
+            AlertDialog(
+                onDismissRequest = { showingDetails = false },
+                title = { Text(title) },
+                text = { Column(Modifier.verticalScroll(rememberScrollState())) { details() } },
+                confirmButton = { TextButton(onClick = { showingDetails = false }) { Text("OK") } },
+            )
+        }
         ListItem(
             headlineContent = {
-                Text(title)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(title, modifier = Modifier.weight(1f, fill = false))
+                    if (details != null) {
+                        IconButton(onClick = { showingDetails = true }) {
+                            Icon(Icons.Outlined.Info, contentDescription = "About $title")
+                        }
+                    }
+                }
             },
             trailingContent = if (selectorBelow) null else selector,
             supportingContent = {
@@ -2931,6 +2963,7 @@ fun <T> basicSettingsDropdownItem(
                 }
             },
             shadowElevation = ELEVATION,
+            modifier = Modifier.clickable { expanded = true },
         )
     }
 )
