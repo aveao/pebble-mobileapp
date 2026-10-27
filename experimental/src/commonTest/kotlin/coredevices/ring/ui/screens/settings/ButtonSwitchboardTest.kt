@@ -8,6 +8,7 @@ import coredevices.ring.service.button.GestureDestination
 import coredevices.ring.service.button.GestureKind
 import coredevices.ring.service.button.RingGesture
 import coredevices.ring.service.button.accepts
+import coredevices.ring.ui.viewmodel.DestinationItem
 import io.rebble.libpebblecommon.plugin.PluginMetadata
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -75,52 +76,37 @@ class ButtonSwitchboardTest {
     }
 
     @Test
-    fun otherAgentsListInstalledPluginsThenTheStores() {
-        val claude = AgentPluginOption(FakeAgentProvider("plugin:claude", "Claude"), connected = true)
-        val codex = AgentPluginOption(FakeAgentProvider("plugin:codex", "Codex"), connected = false)
-        val things = storePlugin("Things")
+    fun agentTitlesComeFromInstalledPluginsOnly() {
+        val claude = installed("plugin:claude", "Claude", connected = true)
+        val things = DestinationItem.InStore(storePlugin("Things"))
 
-        assertEquals(
-            listOf(OtherAgentRow.Installed(claude), OtherAgentRow.Installed(codex), OtherAgentRow.Store(things)),
-            otherAgentRows(GestureDestination.IndexAgent, listOf(claude, codex), listOf(things)),
-        )
-        assertEquals(emptyList(), otherAgentRows(GestureDestination.IndexAgent, emptyList(), emptyList()))
+        assertEquals(mapOf("plugin:claude" to "Claude"), listOf<DestinationItem>(claude, things).agentTitles())
+        assertEquals(null, null.agentTitles())
+        assertEquals(GestureDestination.AgentPlugin("plugin:claude"), claude.route)
     }
 
     @Test
-    fun aRouteToAnUninstalledAgentStaysListedSoItCanBeChanged() {
-        val claude = AgentPluginOption(FakeAgentProvider("plugin:claude", "Claude"), connected = true)
+    fun aRouteToAnUninstalledAgentIsKeptSoItCanBeChanged() {
+        val claude = installed("plugin:claude", "Claude", connected = true)
         val gone = GestureDestination.AgentPlugin("plugin:gone")
 
-        assertEquals(
-            listOf(OtherAgentRow.Installed(claude), OtherAgentRow.Missing(gone)),
-            otherAgentRows(gone, listOf(claude), emptyList()),
-        )
-        assertEquals(
-            listOf(OtherAgentRow.Installed(claude)),
-            otherAgentRows(claude.destination, listOf(claude), emptyList()),
-        )
+        assertEquals(gone, missingAgentRoute(gone, listOf(claude)))
+        assertEquals(null, missingAgentRoute(gone, null))
+        assertEquals(null, missingAgentRoute(claude.route, listOf(claude)))
+        assertEquals(null, missingAgentRoute(GestureDestination.IndexAgent, emptyList()))
     }
 
     @Test
-    fun agentPluginOptionsCarryTheirProviderTitles() {
-        val claude = FakeAgentProvider("plugin:claude", "Claude")
-        val options = listOf(AgentPluginOption(claude, connected = false))
+    fun onlyAConnectedRoutedPluginWithALockerPageOffersItsSettings() {
+        val claude = installed("plugin:claude", "Claude", connected = true, hasLockerPage = true)
+        val codex = installed("plugin:codex", "Codex", connected = true)
+        val gone = installed("plugin:gone", "Gone", connected = false, hasLockerPage = true)
+        val agents = listOf(claude, codex, gone)
 
-        assertEquals(GestureDestination.AgentPlugin("plugin:claude"), options.single().destination)
-        assertEquals(mapOf("plugin:claude" to "Claude"), options.titles())
-    }
-
-    @Test
-    fun onlyAConfigurableRoutedPluginOffersItsSettings() {
-        val claude = AgentPluginOption(FakeAgentProvider("plugin:claude", "Claude"), connected = true, configurable = true)
-        val codex = AgentPluginOption(FakeAgentProvider("plugin:codex", "Codex"), connected = true)
-        val options = listOf(claude, codex)
-
-        assertEquals(claude, options.configurableFor(claude.destination))
-        assertEquals(null, options.configurableFor(codex.destination))
-        assertEquals(null, options.configurableFor(GestureDestination.IndexAgent))
-        assertEquals(null, options.configurableFor(GestureDestination.AgentPlugin("plugin:gone")))
+        assertEquals(claude, agents.configurableAgentFor(claude.route))
+        assertEquals(null, agents.configurableAgentFor(codex.route))
+        assertEquals(null, agents.configurableAgentFor(gone.route))
+        assertEquals(null, agents.configurableAgentFor(GestureDestination.IndexAgent))
     }
 
     @Test
@@ -129,6 +115,7 @@ class ButtonSwitchboardTest {
 
         assertEquals("Claude", claude.tileLabel(mapOf("plugin:claude" to "Claude")))
         assertEquals("Unavailable agent", claude.tileLabel(emptyMap()))
+        assertEquals("Agent plugin", claude.tileLabel(null))
         assertEquals("Index agent", GestureDestination.IndexAgent.tileLabel(mapOf("plugin:claude" to "Claude")))
     }
 
@@ -183,6 +170,9 @@ class ButtonSwitchboardTest {
             .flatMap { destinationsFor(it) }
             .forEach { assertTrue(it.tileLabel.isNotBlank(), "$it has no tile label") }
     }
+
+    private fun installed(id: String, title: String, connected: Boolean, hasLockerPage: Boolean = false) =
+        DestinationItem.Installed(FakeAgentProvider(id, title), title, connected, hasLockerPage)
 
     private fun storePlugin(name: String) = StorePlugin(
         metadata = PluginMetadata(

@@ -76,6 +76,8 @@ import coredevices.ring.service.button.GestureDestination
 import coredevices.ring.service.button.GestureKind
 import coredevices.ring.service.button.RingGesture
 import coredevices.ring.ui.theme.IndexTheme
+import coredevices.ring.ui.viewmodel.DestinationItem
+import coredevices.ring.ui.viewmodel.isConnected
 
 private val DOT = 9.dp
 private val TILE_WIDTH = 168.dp
@@ -101,44 +103,21 @@ val RingGesture.glyph: List<Dp>
         RingGesture.ClickHold -> listOf(DOT, 26.dp)
     }
 
-/** An installed agent plugin offered as a recording destination; only a [connected] one can be picked,
- *  and a [configurable] one has a settings page to reopen once routed to. */
-data class AgentPluginOption(
-    val provider: IntegrationProvider,
-    val connected: Boolean,
-    val configurable: Boolean = false,
-) {
-    val destination: GestureDestination.AgentPlugin get() = GestureDestination.AgentPlugin(provider.id)
-}
+val DestinationItem.Installed.route: GestureDestination.AgentPlugin get() = GestureDestination.AgentPlugin(id)
 
-fun List<AgentPluginOption>.titles(): Map<String, String> = associate { it.provider.id to it.provider.title }
+/** Tile labels for agent plugin routes, by provider id; null while the agents are still loading. */
+fun List<DestinationItem>?.agentTitles(): Map<String, String>? =
+    this?.filterIsInstance<DestinationItem.Installed>()?.associate { it.id to it.title }
 
-/** The plugin [destination] routes to, when it has settings to open. */
-fun List<AgentPluginOption>.configurableFor(destination: GestureDestination): AgentPluginOption? =
-    firstOrNull { it.configurable && it.destination == destination }
+/** The installed plugin [destination] routes to, when it is connected and has a locker page to open. */
+internal fun List<DestinationItem>.configurableAgentFor(destination: GestureDestination): DestinationItem.Installed? =
+    filterIsInstance<DestinationItem.Installed>().firstOrNull { it.route == destination && it.isConfigurable() }
 
-/** One row of the "Other agents" group in the destination sheet. */
-sealed interface OtherAgentRow {
-    /** An installed agent plugin; only a connected one can be picked, the rest offer Connect. */
-    data class Installed(val option: AgentPluginOption) : OtherAgentRow
-    /** The current route to a plugin that has since been uninstalled, kept so it can be changed. */
-    data class Missing(val destination: GestureDestination.AgentPlugin) : OtherAgentRow
-    /** A store plugin not installed yet; Connect installs it. */
-    data class Store(val plugin: StorePlugin) : OtherAgentRow
-}
-
-/** Installed agent plugins first, then the store's, with [current] kept in between if its plugin is gone. */
-fun otherAgentRows(
-    current: GestureDestination,
-    installed: List<AgentPluginOption>,
-    store: List<StorePlugin>,
-): List<OtherAgentRow> {
-    val missing = (current as? GestureDestination.AgentPlugin)
-        ?.takeIf { route -> installed.none { it.destination == route } }
-    return installed.map { OtherAgentRow.Installed(it) } +
-        listOfNotNull(missing?.let { OtherAgentRow.Missing(it) }) +
-        store.map { OtherAgentRow.Store(it) }
-}
+/** [current] when it routes to an agent plugin that is no longer installed, kept listed so it can be changed.
+ *  Null while [agents] are still loading: the plugin is not known to be gone yet. */
+fun missingAgentRoute(current: GestureDestination, agents: List<DestinationItem>?): GestureDestination.AgentPlugin? =
+    (current as? GestureDestination.AgentPlugin)
+        ?.takeIf { route -> agents != null && agents.none { it is DestinationItem.Installed && it.route == route } }
 
 /** Agent plugins are not listed here: the sheet groups them under "Other agents" after [GestureDestination.LocalAgent].
  *  [musicControl] is false where the platform can't control media; clicks can still go to a webhook or agent command. */
@@ -173,8 +152,9 @@ internal fun gestureSheetStaysOpenFor(
     destination == GestureDestination.AgentCommand ||
     (gesture.kind == GestureKind.Recording && destination != GestureDestination.Nothing)
 
-/** [agentTitles] names agent plugins by provider id; a route to one no longer installed reads as unavailable. */
-fun GestureDestination.tileLabel(agentTitles: Map<String, String>): String = when (this) {
+/** [agentTitles] names agent plugins by provider id, or is null while they are still loading;
+ *  a route to one that has loaded as not installed reads as unavailable. */
+fun GestureDestination.tileLabel(agentTitles: Map<String, String>?): String = when (this) {
     GestureDestination.PlayPause -> "Play/Pause"
     GestureDestination.NextTrack -> "Next track"
     GestureDestination.PreviousTrack -> "Previous track"
@@ -184,13 +164,14 @@ fun GestureDestination.tileLabel(agentTitles: Map<String, String>): String = whe
     GestureDestination.WebhookOnly -> "Webhook only"
     GestureDestination.Webhook -> "Webhook"
     GestureDestination.AgentCommand -> "Agent command"
-    is GestureDestination.AgentPlugin -> agentTitles[providerId] ?: "Unavailable agent"
+    is GestureDestination.AgentPlugin ->
+        if (agentTitles == null) "Agent plugin" else agentTitles[providerId] ?: "Unavailable agent"
     GestureDestination.Nothing -> "Nothing"
 }
 
 val GestureDestination.tileLabel: String get() = tileLabel(emptyMap())
 
-private fun GestureDestination.optionLabel(agentTitles: Map<String, String>): String = when (this) {
+private fun GestureDestination.optionLabel(agentTitles: Map<String, String>?): String = when (this) {
     GestureDestination.PlayPause -> "Play or pause music"
     GestureDestination.NextTrack -> "Skip to the next track"
     GestureDestination.Webhook -> "Send to webhook"
@@ -234,15 +215,15 @@ internal fun ButtonSwitchboard(
     onSetCommand: (RingGesture, String) -> Unit,
     onOpenWebhookSettings: (RingGesture) -> Unit,
     onDisableWebhook: (RingGesture) -> Unit,
-    agentPlugins: List<AgentPluginOption> = emptyList(),
-    storeAgentPlugins: List<StorePlugin> = emptyList(),
+    /** Null while the agents are still loading. */
+    agentDestinations: List<DestinationItem>? = emptyList(),
     onConnectAgentPlugin: (IntegrationProvider) -> Unit = {},
     onInstallAgentPlugin: (StorePlugin) -> Unit = {},
     onConfigureAgentPlugin: (IntegrationProvider) -> Unit = {},
 ) {
     var sheetGesture by remember { mutableStateOf<RingGesture?>(null) }
     val webhookCopies = { gesture: RingGesture -> webhookConfigFor(gesture).isActive }
-    val agentTitles = agentPlugins.titles()
+    val agentTitles = agentDestinations.agentTitles()
 
     Column(
         modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 10.dp),
@@ -260,7 +241,7 @@ internal fun ButtonSwitchboard(
                     agentTitles = agentTitles,
                     command = commands[gesture].orEmpty(),
                     onEdit = { sheetGesture = gesture },
-                    onConfigure = agentPlugins.configurableFor(destination)?.let { plugin ->
+                    onConfigure = agentDestinations?.configurableAgentFor(destination)?.let { plugin ->
                         { onConfigureAgentPlugin(plugin.provider) }
                     },
                 )
@@ -279,8 +260,7 @@ internal fun ButtonSwitchboard(
         GestureDestinationSheet(
             gesture = gesture,
             current = routes[gesture] ?: GestureDestination.Nothing,
-            agentPlugins = agentPlugins,
-            storeAgentPlugins = storeAgentPlugins,
+            agentDestinations = agentDestinations,
             musicControl = musicEnabled,
             command = commands[gesture].orEmpty(),
             onSetCommand = { onSetCommand(gesture, it) },
@@ -323,7 +303,7 @@ internal fun ButtonSwitchboard(
 private fun GestureRow(
     gesture: RingGesture,
     destination: GestureDestination,
-    agentTitles: Map<String, String>,
+    agentTitles: Map<String, String>?,
     command: String,
     onEdit: () -> Unit,
     onConfigure: (() -> Unit)?,
@@ -477,8 +457,7 @@ private fun WebhookCopyRow(onClick: () -> Unit) {
 private fun GestureDestinationSheet(
     gesture: RingGesture,
     current: GestureDestination,
-    agentPlugins: List<AgentPluginOption>,
-    storeAgentPlugins: List<StorePlugin>,
+    agentDestinations: List<DestinationItem>?,
     musicControl: Boolean,
     command: String,
     onSetCommand: (String) -> Unit,
@@ -520,8 +499,8 @@ private fun GestureDestinationSheet(
                 color = colors.onSurface,
             )
         }
-        val agentTitles = agentPlugins.titles()
-        val otherAgents = otherAgentRows(current, agentPlugins, storeAgentPlugins)
+        val agentTitles = agentDestinations.agentTitles()
+        val missingAgent = missingAgentRoute(current, agentDestinations)
         destinationsFor(gesture.kind, musicControl).forEach { option ->
             SheetChoiceRow(
                 icon = option.icon,
@@ -533,9 +512,11 @@ private fun GestureDestinationSheet(
                     onSelect(option)
                 },
             )
-            if (option == GestureDestination.LocalAgent && otherAgents.isNotEmpty()) {
+            val showOtherAgents = agentDestinations == null || agentDestinations.isNotEmpty() || missingAgent != null
+            if (option == GestureDestination.LocalAgent && showOtherAgents) {
                 OtherAgentsGroup(
-                    rows = otherAgents,
+                    agents = agentDestinations,
+                    missing = missingAgent,
                     current = current,
                     agentTitles = agentTitles,
                     onSelect = {
@@ -606,9 +587,10 @@ private fun GestureDestinationSheet(
 /** Agent plugins folded into one row: installed ones, then the store's, each a tap away from connecting. */
 @Composable
 private fun OtherAgentsGroup(
-    rows: List<OtherAgentRow>,
+    agents: List<DestinationItem>?,
+    missing: GestureDestination.AgentPlugin?,
     current: GestureDestination,
-    agentTitles: Map<String, String>,
+    agentTitles: Map<String, String>?,
     onSelect: (GestureDestination) -> Unit,
     onConnect: (IntegrationProvider) -> Unit,
     onInstall: (StorePlugin) -> Unit,
@@ -621,7 +603,11 @@ private fun OtherAgentsGroup(
     SheetChoiceRow(
         icon = Icons.AutoMirrored.Filled.Send,
         title = "Other agents",
-        subtitle = routed?.tileLabel(agentTitles) ?: "What you say goes straight to the agent you pick",
+        subtitle = when {
+            agents == null -> "Loading…"
+            routed != null -> routed.tileLabel(agentTitles)
+            else -> "What you say goes straight to the agent you pick"
+        },
         selected = routed != null && !expanded,
         onClick = { expanded = !expanded },
         trailing = {
@@ -639,42 +625,34 @@ private fun OtherAgentsGroup(
         exit = shrinkVertically() + fadeOut(),
     ) {
         Column {
-            rows.forEach { row ->
-                when (row) {
-                    is OtherAgentRow.Installed -> {
-                        val option = row.option
-                        val connect = { onConnect(option.provider) }
-                        OtherAgentChoiceRow(
-                            title = option.provider.title,
-                            subtitle = when {
-                                !option.connected -> "Not connected"
-                                option.configurable -> "Hold to reconfigure"
-                                else -> null
-                            },
-                            selected = option.destination == current,
-                            onClick = { if (option.connected) onSelect(option.destination) else connect() },
-                            onConnect = connect.takeUnless { option.connected },
-                            onLongClick = if (option.configurable) { { onConfigure(option.provider) } } else null,
-                        )
-                    }
-                    is OtherAgentRow.Missing -> OtherAgentChoiceRow(
-                        title = row.destination.tileLabel(agentTitles),
-                        subtitle = "No longer installed",
-                        selected = true,
-                        onClick = {},
-                        onConnect = null,
-                    )
-                    is OtherAgentRow.Store -> {
-                        val install = { onInstall(row.plugin) }
-                        OtherAgentChoiceRow(
-                            title = row.plugin.title,
-                            subtitle = "Not connected",
-                            selected = false,
-                            onClick = install,
-                            onConnect = install,
-                        )
+            agents.orEmpty().forEach { item ->
+                val installed = item as? DestinationItem.Installed
+                val configurable = item.isConfigurable()
+                val connect = {
+                    when (item) {
+                        is DestinationItem.Installed -> onConnect(item.provider)
+                        is DestinationItem.InStore -> onInstall(item.plugin)
                     }
                 }
+                OtherAgentChoiceRow(
+                    title = item.title,
+                    subtitle = item.rowSubtitle(configurable),
+                    selected = installed?.route == current,
+                    onClick = {
+                        if (installed != null && installed.connected) onSelect(installed.route) else connect()
+                    },
+                    onConnect = connect.takeUnless { item.isConnected },
+                    onLongClick = installed?.takeIf { configurable }?.let { { onConfigure(it.provider) } },
+                )
+            }
+            missing?.let {
+                OtherAgentChoiceRow(
+                    title = it.tileLabel(agentTitles),
+                    subtitle = "No longer installed",
+                    selected = true,
+                    onClick = {},
+                    onConnect = null,
+                )
             }
         }
     }

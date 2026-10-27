@@ -1,7 +1,6 @@
 package coredevices.ring.ui.viewmodel
 
 import PlatformUiContext
-import androidx.compose.runtime.Composable
 import com.russhwolf.settings.MapSettings
 import coredevices.libindex.di.LibIndexCoroutineScope
 import coredevices.ring.agent.integrations.AgentIntegration
@@ -10,12 +9,12 @@ import coredevices.ring.agent.integrations.ItemSource
 import coredevices.ring.agent.integrations.providers.IntegrationProvider
 import coredevices.ring.agent.integrations.providers.IntegrationProviderRepository
 import coredevices.ring.agent.integrations.providers.IntegrationSupport
+import coredevices.ring.agent.pebble_plugin.FakePluginStore
 import coredevices.ring.agent.pebble_plugin.FakePlugins
 import coredevices.ring.agent.pebble_plugin.PblPluginActionAgentIntegration
 import coredevices.ring.agent.pebble_plugin.PblPluginActionIntegration
 import coredevices.ring.agent.pebble_plugin.PblPluginActionNoteIntegration
 import coredevices.ring.agent.pebble_plugin.PblPluginActionReminderIntegration
-import coredevices.ring.agent.pebble_plugin.PluginStore
 import coredevices.ring.agent.pebble_plugin.StorePlugin
 import coredevices.ring.data.entity.room.indexfeed.CachedItem
 import coredevices.ring.database.PreferencesImpl
@@ -29,7 +28,6 @@ import coredevices.ring.service.button.GestureRoutingPreferences
 import coredevices.ring.service.button.RingGesture
 import coredevices.util.Platform
 import coredevices.util.transcription.CactusModelPathProvider
-import io.rebble.libpebblecommon.permissions.InstallReview
 import io.rebble.libpebblecommon.plugin.ActionDeclaration
 import io.rebble.libpebblecommon.plugin.PluginMetadata
 import io.rebble.libpebblecommon.plugin.SourceDeclaration
@@ -114,22 +112,29 @@ class RingButtonViewModelTest {
     }
 
     @Test
-    fun everyAgentPluginIsListedAndOnlyConnectedOnesArePickable() = withMain {
+    fun agentDestinationsListInstalledPluginsThenTheStoresAndFollowRefresh() = withMain {
         val claude = FakeProvider("plugin:claude", "Claude")
         val codex = FakeProvider("plugin:codex", "Codex", authorized = false)
-        val fixture = Fixture(this, providers = listOf(claude, codex))
-        backgroundScope.launch { fixture.viewModel.agentProviders.collect {} }
-        backgroundScope.launch { fixture.viewModel.connectedAgentProviders.collect {} }
+        val things = storePlugin("Things", "00000000-0000-0000-0002-000000000001", IntegrationSupport.Agent)
+        val fixture = Fixture(this, providers = listOf(claude, codex), storePlugins = listOf(things))
+        assertEquals(null, fixture.viewModel.agentDestinations.value)
+        backgroundScope.launch { fixture.viewModel.agentDestinations.collect {} }
         runCurrent()
 
-        assertEquals(listOf<IntegrationProvider>(claude, codex), fixture.viewModel.agentProviders.value)
-        assertEquals(listOf<IntegrationProvider>(claude), fixture.viewModel.connectedAgentProviders.value)
+        assertEquals(
+            listOf(
+                DestinationItem.Installed(claude, "Claude", connected = true, hasLockerPage = false),
+                DestinationItem.Installed(codex, "Codex", connected = false, hasLockerPage = false),
+                DestinationItem.InStore(things),
+            ),
+            fixture.viewModel.agentDestinations.value,
+        )
 
         codex.authorized = true
         fixture.viewModel.refreshAgentDestinations()
         runCurrent()
 
-        assertEquals(listOf<IntegrationProvider>(claude, codex), fixture.viewModel.connectedAgentProviders.value)
+        assertTrue(fixture.viewModel.agentDestinations.value!!.all { it.isConnected || it is DestinationItem.InStore })
     }
 
     @Test
@@ -154,37 +159,20 @@ class RingButtonViewModelTest {
     }
 
     @Test
-    fun storeAgentPluginsAreTheUninstalledOnesThatTakeRecordings() = withMain {
-        val claude = storePlugin("Claude", "00000000-0000-0000-0002-000000000001", IntegrationSupport.Agent)
-        val codex = storePlugin("Codex", "00000000-0000-0000-0002-000000000002", IntegrationSupport.Agent)
-        val things = storePlugin("Things", "00000000-0000-0000-0002-000000000003", IntegrationSupport.Note)
-        val fixture = Fixture(this, storePlugins = listOf(claude, codex, things))
-        backgroundScope.launch { fixture.viewModel.storeAgentPlugins.collect {} }
-
-        fixture.lockerUuids.value = listOf(codex.pluginUuid)
-        runCurrent()
-        assertEquals(listOf(claude), fixture.viewModel.storeAgentPlugins.value)
-
-        fixture.pluginsEnabled.value = false
-        runCurrent()
-        assertEquals(emptyList(), fixture.viewModel.storeAgentPlugins.value)
-    }
-
-    @Test
     fun installingAStorePluginGoesThroughTheStoreAndRefreshesTheProviders() = withMain {
         val claude = storePlugin("Claude", "00000000-0000-0000-0002-000000000001", IntegrationSupport.Agent)
         val codex = FakeProvider("plugin:codex", "Codex", authorized = false)
         val fixture = Fixture(this, providers = listOf(codex), storePlugins = listOf(claude))
-        backgroundScope.launch { fixture.viewModel.connectedAgentProviders.collect {} }
+        backgroundScope.launch { fixture.viewModel.agentDestinations.collect {} }
         runCurrent()
-        assertEquals(emptyList(), fixture.viewModel.connectedAgentProviders.value)
+        assertFalse(fixture.viewModel.agentDestinations.value!!.first().isConnected)
 
         codex.authorized = true
         assertTrue(fixture.viewModel.installStorePlugin(claude, mapOf("location" to true)))
         runCurrent()
 
         assertEquals(listOf(claude.pluginUuid to mapOf<String, Boolean?>("location" to true)), fixture.store.installed)
-        assertEquals(listOf<IntegrationProvider>(codex), fixture.viewModel.connectedAgentProviders.value)
+        assertTrue(fixture.viewModel.agentDestinations.value!!.first().isConnected)
     }
 
     private fun storePlugin(name: String, uuid: String, support: IntegrationSupport) = StorePlugin(
@@ -225,40 +213,25 @@ class RingButtonViewModelTest {
         val webhooks = IndexWebhookPreferences(MapSettings())
         val cactus = FakeCactusModelPathProvider()
         val store = FakePluginStore(storePlugins)
-        val pluginsEnabled = MutableStateFlow(true)
-        val lockerUuids = MutableStateFlow<List<Uuid>>(emptyList())
         val viewModel = RingButtonViewModel(
             routing,
             webhooks,
             cactus,
             LibIndexCoroutineScope(StandardTestDispatcher(scope.testScheduler)),
             FakePlatform(platformName),
-            IntegrationProviderRepository(
-                preferences = PreferencesImpl(MapSettings()),
-                plugins = FakePlugins(),
-                platform = FakePlatform(platformName),
-                delegatedItems = DelegatedIntegrationItems(ItemFactory(), ItemRepository(FakeCachedItemDao(), cancelReminder = {})),
-                builtIn = listOf(FakeProvider("index", "Built-in", storesItemsLocally = true, supports = setOf(IntegrationSupport.Note))) + providers,
+            DestinationCatalog(
+                providers = IntegrationProviderRepository(
+                    preferences = PreferencesImpl(MapSettings()),
+                    plugins = FakePlugins(),
+                    platform = FakePlatform(platformName),
+                    delegatedItems = DelegatedIntegrationItems(ItemFactory(), ItemRepository(FakeCachedItemDao(), cancelReminder = {})),
+                    builtIn = listOf(FakeProvider("index", "Built-in", storesItemsLocally = true, supports = setOf(IntegrationSupport.Note))) + providers,
+                ),
+                pluginStore = store,
+                pluginsEnabled = MutableStateFlow(true),
+                lockerUuids = MutableStateFlow(emptyList()),
             ),
-            pluginStore = store,
-            pluginsEnabled = pluginsEnabled,
-            lockerUuids = lockerUuids,
         )
-    }
-
-    private class FakePluginStore(private val plugins: List<StorePlugin>) : PluginStore {
-        val installed = mutableListOf<Pair<Uuid, Map<String, Boolean?>>>()
-
-        override suspend fun indexPlugins(): List<StorePlugin>? = plugins
-        override suspend fun reviewInstall(pluginUuid: Uuid): InstallReview? = null
-        override suspend fun install(pluginUuid: Uuid, granted: Map<String, Boolean?>): Boolean {
-            installed += pluginUuid to granted
-            return true
-        }
-
-        @Composable
-        override fun ReviewInstallDialog(review: InstallReview, onAnswer: (Map<String, Boolean?>?) -> Unit) {
-        }
     }
 
     private class FakeAgentIntegration : AgentIntegration {

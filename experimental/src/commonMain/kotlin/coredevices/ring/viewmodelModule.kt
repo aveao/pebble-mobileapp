@@ -6,6 +6,7 @@ import coredevices.ring.ui.components.recording.RecordingTraceTimelineViewModel
 import coredevices.ring.ui.viewmodel.AllAnswersViewModel
 import coredevices.ring.ui.viewmodel.AllListsViewModel
 import coredevices.ring.ui.viewmodel.BackupViewModel
+import coredevices.ring.ui.viewmodel.DestinationCatalog
 import coredevices.ring.ui.viewmodel.EncryptionViewModel
 import coredevices.ring.ui.viewmodel.FullFeedViewModel
 import coredevices.ring.ui.viewmodel.IndexActionsViewModel
@@ -28,32 +29,35 @@ internal val viewmodelModule = module {
     viewModelOf(::ObjectDetailViewModel)
     viewModelOf(::RecordingDetailsViewModel)
     viewModelOf(::SettingsViewModel)
-    viewModel {
+    single {
         val libPebble = get<LibPebble>()
-        IndexActionsViewModel(
-            indexActionsRepository = get(),
-            mcpServerRepository = get(),
-            pluginStore = get(),
+        DestinationCatalog(
             providers = get(),
-            preferences = get(),
-            gestureRouting = get(),
-            platform = get(),
+            pluginStore = get(),
             pluginsEnabled = libPebble.pluginsEnabled(),
             lockerUuids = libPebble.getAllLockerUuids(),
         )
     }
     viewModel {
-        val libPebble = get<LibPebble>()
+        IndexActionsViewModel(
+            indexActionsRepository = get(),
+            mcpServerRepository = get(),
+            destinations = get(),
+            providers = get(),
+            preferences = get(),
+            gestureRouting = get(),
+            platform = get(),
+            pluginsEnabled = get<LibPebble>().pluginsEnabled(),
+        )
+    }
+    viewModel {
         RingButtonViewModel(
             gestureRouting = get(),
             webhookPreferences = get(),
             cactusModelProvider = get(),
             appScope = get(),
             platform = get(),
-            providers = get(),
-            pluginStore = get(),
-            pluginsEnabled = libPebble.pluginsEnabled(),
-            lockerUuids = libPebble.getAllLockerUuids(),
+            destinations = get(),
         )
     }
     viewModelOf(::BackupViewModel)

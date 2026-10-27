@@ -29,14 +29,7 @@ fun RingButtonSection(coreNav: CoreNav, viewModel: RingButtonViewModel = koinVie
     val gestureRoutes by viewModel.gestureRoutes.collectAsState()
     val gestureCommands by viewModel.gestureCommands.collectAsState()
     val webhookConfigs by viewModel.webhookConfigs.collectAsState()
-    val agentProviders by viewModel.agentProviders.collectAsState()
-    val connectedAgentProviders by viewModel.connectedAgentProviders.collectAsState()
-    val storeAgentPlugins by viewModel.storeAgentPlugins.collectAsState()
-    val lockerPlugins by viewModel.lockerPlugins.collectAsState()
-    val agentPlugins = agentProviders.map {
-        val connected = it in connectedAgentProviders
-        AgentPluginOption(it, connected = connected, configurable = connected && it.hasLockerPage(lockerPlugins))
-    }
+    val agentDestinations by viewModel.agentDestinations.collectAsState()
     val configurePlugin: (Uuid, String) -> Unit = { uuid, title ->
         coreNav.navigateTo(CommonRoutes.WatchappSettingsRoute(uuid = uuid.toString(), title = title))
     }
@@ -57,8 +50,7 @@ fun RingButtonSection(coreNav: CoreNav, viewModel: RingButtonViewModel = koinVie
         onSetCommand = viewModel::setGestureCommand,
         onOpenWebhookSettings = { webhookViewModel.openDialog(it) },
         onDisableWebhook = viewModel::disableWebhook,
-        agentPlugins = agentPlugins,
-        storeAgentPlugins = storeAgentPlugins,
+        agentDestinations = agentDestinations,
         onConnectAgentPlugin = { provider ->
             if (provider is PblPluginIntegrationProvider) configurePlugin(provider.pluginUuid, provider.title)
         },
@@ -97,12 +89,9 @@ fun IndexAgentActionsSection(
     val noteProvider by viewModel.noteProvider.collectAsState()
     val reminderProvider by viewModel.reminderProvider.collectAsState()
     val approvedContactCount by viewModel.approvedContactCount.collectAsState()
-    val noteDestinationProviders by viewModel.noteDestinationProviders.collectAsState()
-    val reminderDestinationProviders by viewModel.reminderDestinationProviders.collectAsState()
-    val availableNoteProviders by viewModel.availableNoteProviders.collectAsState()
-    val availableReminderProviders by viewModel.availableReminderProviders.collectAsState()
+    val noteDestinations by viewModel.noteDestinations.collectAsState()
+    val reminderDestinations by viewModel.reminderDestinations.collectAsState()
     val lockerPlugins by viewModel.lockerPlugins.collectAsState()
-    val storePlugins by viewModel.storePlugins.collectAsState()
     val pluginsEnabled by viewModel.pluginsEnabled.collectAsState()
     val showContactsDialog by viewModel.showContactsDialog.collectAsState()
 
@@ -121,12 +110,9 @@ fun IndexAgentActionsSection(
         noteProvider = noteProvider,
         reminderProvider = reminderProvider,
         approvedContactCount = approvedContactCount,
-        noteDestinationProviders = noteDestinationProviders,
-        reminderDestinationProviders = reminderDestinationProviders,
-        availableNoteProviders = availableNoteProviders,
-        availableReminderProviders = availableReminderProviders,
+        noteDestinations = noteDestinations,
+        reminderDestinations = reminderDestinations,
         lockerPlugins = lockerPlugins,
-        storePlugins = storePlugins,
         pluginsEnabled = pluginsEnabled,
         onSetActionEnabled = viewModel::setActionEnabled,
         onSetPluginGrantEnabled = viewModel::setPluginGrantEnabled,

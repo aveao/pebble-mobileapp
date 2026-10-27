@@ -4,15 +4,6 @@ import androidx.compose.runtime.Composable
 import coredevices.ring.agent.integrations.providers.IntegrationSupport
 import io.rebble.libpebblecommon.permissions.InstallReview
 import io.rebble.libpebblecommon.plugin.PluginMetadata
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.SharingStarted
-import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.flatMapLatest
-import kotlinx.coroutines.flow.flow
-import kotlinx.coroutines.flow.flowOf
-import kotlinx.coroutines.flow.shareIn
 import kotlin.uuid.Uuid
 
 /** A plugin the app store lists for Index, offered as a destination before it is installed. */
@@ -43,25 +34,4 @@ interface PluginStore {
     /** [onAnswer] gets null if the user cancelled. */
     @Composable
     fun ReviewInstallDialog(review: InstallReview, onAnswer: (Map<String, Boolean?>?) -> Unit)
-}
-
-/** Store plugins not in the locker yet, offered as destinations while plugins are on.
- *  The store is fetched once per [scope]: the list only changes when the store does. */
-@OptIn(ExperimentalCoroutinesApi::class)
-fun PluginStore.uninstalledIndexPlugins(
-    scope: CoroutineScope,
-    pluginsEnabled: Flow<Boolean>,
-    lockerUuids: Flow<List<Uuid>>,
-): Flow<List<StorePlugin>> {
-    val listed = flow { emit(indexPlugins().orEmpty()) }
-        .shareIn(scope, SharingStarted.Lazily, replay = 1)
-    return pluginsEnabled.flatMapLatest { pluginsOn ->
-        if (!pluginsOn) {
-            flowOf(emptyList())
-        } else {
-            combine(listed, lockerUuids) { plugins, installed ->
-                plugins.filter { it.pluginUuid !in installed }
-            }
-        }
-    }
 }
