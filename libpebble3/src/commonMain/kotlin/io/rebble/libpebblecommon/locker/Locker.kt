@@ -299,7 +299,7 @@ class Locker(
     internal suspend fun recordDeclaredPermissions(appId: Uuid, pbwPath: Path) {
         val entry = lockerEntryDao.getEntry(appId)
         val pbw = PbwApp(pbwPath)
-        permissions.recordRequested(appId, pbw.info.requestedPermissions(pbw.hasPKJS, companionsOf = entry).all)
+        permissions.recordRequested(appId, pbw.info.requestedPermissions(pbw.hasPKJS, companionsOf = entry))
     }
 
     /** For apps installed before declarations were recorded, whose pbws won't be fetched again. */
@@ -430,7 +430,7 @@ class Locker(
         }
         lockerEntryDao.insertOrReplaceAndOrder(lockerEntry, config.value.lockerSyncLimitV2)
         // After the insert: requests are only shown for installed apps.
-        permissions.recordRequested(lockerEntry.id, pbwApp.requestedPermissions().all)
+        permissions.recordRequested(lockerEntry.id, pbwApp.requestedPermissions())
         permissions.setDecisions(lockerEntry.id, granted)
         performCacheCleanup()
         return try {

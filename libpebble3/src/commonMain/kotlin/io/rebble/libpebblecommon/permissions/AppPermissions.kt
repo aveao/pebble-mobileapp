@@ -216,6 +216,16 @@ class AppPermissions(
             }
         }
 
+    /** A version that declares its permissions loses what a legacy version was given implicitly. */
+    suspend fun recordRequested(appUuid: Uuid, requested: RequestedPermissions) {
+        val all = requested.all
+        if (requested.declared != null) {
+            val undeclared = legacyRequested(hasPkjs = true, hasAndroidCompanion = true) - all.toSet()
+            dao.deleteByAppUuidAndPermissions(appUuid, undeclared)
+        }
+        recordRequested(appUuid, all)
+    }
+
     suspend fun recordRequested(appUuid: Uuid, permissions: Collection<String>) {
         val now = clock.now().toEpochMilliseconds()
         dao.insertIfAbsent(permissions.map { LockerAppPermission(appUuid, it, granted = null, requestedAtMs = now) })

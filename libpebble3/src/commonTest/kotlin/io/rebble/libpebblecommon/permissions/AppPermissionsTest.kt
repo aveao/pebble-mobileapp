@@ -626,6 +626,16 @@ class WaitingRequestsTest {
     }
 
     @Test
+    fun aVersionDeclaringPermissionsDropsWhatTheLegacyOneWasGiven() = runTest {
+        val permissions = permissions(dao)
+        permissions.recordRequested(APP, RequestedPermissions(declared = null, hasPkjs = true, hasAndroidCompanion = true))
+        permissions.setDecisions(APP, mapOf(LOCATION to false, TIMELINE to true, LEGACY_PEBBLEKIT to false))
+        permissions.recordRequested(APP, RequestedPermissions(declared = listOf(PluginPermission(LOCATION), PluginPermission(CALENDAR)), hasPkjs = true))
+        assertEquals(setOf(LOCATION, CALENDAR), dao.rows.value.keys.map { it.second }.toSet())
+        assertEquals(false, dao.row(LOCATION)!!.granted)
+    }
+
+    @Test
     fun aNullDecisionRecordsASeenUndecidedRow() = runTest {
         permissions(dao).setDecisions(APP, mapOf(CALENDAR to null))
         val row = dao.row(CALENDAR)!!
