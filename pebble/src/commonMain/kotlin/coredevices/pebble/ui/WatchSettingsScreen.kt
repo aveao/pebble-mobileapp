@@ -48,6 +48,7 @@ import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.PhoneAndroid
 import androidx.compose.material.icons.filled.PhoneIphone
+import androidx.compose.material.icons.filled.Power
 import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material.icons.filled.RocketLaunch
 import androidx.compose.material.icons.filled.Schedule
@@ -219,6 +220,7 @@ enum class Section(val title: String, val icon: ImageVector) {
     NotificationsWatch("Notifications", Icons.Default.Notifications), // watch only
     General("General", Icons.Default.Settings),
     Apps("Apps", Icons.Default.Apps),
+    Plugins("Plugins", Icons.Default.Power),
     Battery("Battery", Icons.Default.BatteryFull),
     Calendar("Calendar", Icons.Default.CalendarMonth),
     Health("Health", Icons.AutoMirrored.Filled.DirectionsRun),
@@ -2003,7 +2005,7 @@ fun rememberSettingsItemsState(navBarNav: NavBarNav?, snackbarDisplay: SnackbarD
                     title = "Plugins / permissions preview",
                     description = "Enable Plugins (a new system for apps to share data and actions), and the new granular app permissions system. This will be enabled for everyone in a future release",
                     topLevelType = TopLevelType.Phone,
-                    section = Section.Apps,
+                    section = Section.Plugins,
                     checked = libPebbleConfig.watchConfig.enablePlugins,
                     onCheckChanged = {
                         // So turning them back on shows the permissions introduction again.
@@ -2017,6 +2019,22 @@ fun rememberSettingsItemsState(navBarNav: NavBarNav?, snackbarDisplay: SnackbarD
                         )
                     },
                 ),
+                navBarNav?.let { nav -> basicSettingsActionItem(
+                    title = "Complications",
+                    description = "Readings watchfaces should show in their complication slots",
+                    topLevelType = TopLevelType.Phone,
+                    section = Section.Plugins,
+                    action = { nav.navigateTo(PebbleNavBarRoutes.ComplicationsRoute) },
+                    show = { libPebbleConfig.watchConfig.enablePlugins },
+                ) },
+                navBarNav?.let { nav -> basicSettingsActionItem(
+                    title = "Preferred sources",
+                    description = "Which plugin to use when several offer the same thing",
+                    topLevelType = TopLevelType.Phone,
+                    section = Section.Plugins,
+                    action = { nav.navigateTo(PebbleNavBarRoutes.PreferredSourcesRoute) },
+                    show = { libPebbleConfig.watchConfig.enablePlugins && hasSharedSources(libPebble.getAllPlugins()) },
+                ) },
                 basicSettingsDropdownItem(
                     id = SettingsIds.PermissionPolicy,
                     title = "Ask before apps use permissions",

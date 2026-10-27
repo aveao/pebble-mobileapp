@@ -112,6 +112,7 @@ Examples now:
 | `notes`         | `destination`, `configured`                                       | Notion demo |
 | `reminders`     | `list`, `configured`                                              | Todoist, TickTick demos |
 | `agent`         | `chats`, `configured`                                             |           |
+| `preferences`   | `units`, `complications`, `weather_location`                      | built-in  |
 
 A plugin is offered as a notes / reminders / agent destination for the Index agent when it declares
 a `create_note` / `create_reminder` / `send_to_agent` action *and* serves `notes/configured` /
@@ -293,10 +294,11 @@ Your app uses plugins from its PKJS (`pebble-js-app.js`).
 2. **Let the user choose.** Use `Pebble.enumeratePlugins()` to see everything available, and a
    settings page for the user to pick what goes where, as the `plugin-test` dashboard does. Filter
    by the shapes your design can draw (see [Shapes](#shapes)).
-3. **Use what the user already prefers** *(not built yet)*. Users will pick their favourite readings
-   in the Pebble app: e.g. a user might select weather for home location first, then phone battery,
-   then the Google stock price. An API will expose that ordered list, so any face with widget slots
-   can display those items with no configuration required.
+3. **Use what the user already prefers.** Users pick their favourite readings in the Pebble app
+   (Settings → Plugins → Complications, up to five), e.g. phone battery first, then the temperature for their first
+   weather location, then their next calendar event. `preferences/complications` lists them in
+   order, so a face with N slots can show the first N with no configuration (see
+   [User preferences](#user-preferences)).
 
 **Reading a source:**
 
@@ -346,9 +348,11 @@ Every update is an envelope:
 }
 ```
 
-**Reading from a specific plugin:** pass `plugin: "<uuid>"`, for example your own pbw's plugin. This
-is a preference. If that plugin isn't installed or doesn't serve the item, another plugin serving it
-is used. Check `pluginUuid` on the envelope if you need to know which one answered.
+**Which plugin answers:** pass `plugin: "<uuid>"` only if you depend on that plugin, for example
+your own pbw's plugin: you always get it while it's installed and serves the item, whatever the
+user prefers. Otherwise (or if it isn't installed) you get the plugin the user chose for that item
+in the Pebble app (Settings → Plugins → Preferred sources), else a built-in, else the first by name.
+Check `pluginUuid` on the envelope if you need to know which one answered.
 
 **Invoking an action**: `plugin` is required here, and never falls back to another plugin:
 
@@ -368,6 +372,58 @@ its sources (items, properties and shapes) and actions.
 Error codes: `PLUGIN_UNAVAILABLE`, `PERMISSION_DENIED`, `RATE_LIMITED`, `TIMEOUT`,
 `INVALID_REQUEST`, `UNKNOWN`, plus `AUTH_REQUIRED` and `INVALID_ARGS` for actions. An error doesn't
 end a subscription: it carries on, and the next update may succeed.
+
+## User preferences
+
+The built-in Preferences plugin tells apps how the user wants things shown and what they want to
+see. Each source updates when the user changes the setting.
+
+**`preferences/units`** (no permission): one instance, every property a `shortText`.
+
+| Property        | Values                        |
+| --------------- | ----------------------------- |
+| `locale`        | e.g. `en-GB`, `de-DE`: the watch's language, else the phone's. Use it with `Intl` for decimal separators, dates and so on. |
+| `temperature`   | `°C`, `°F`                    |
+| `distance`      | `km`, `mi`                    |
+| `wind_speed`    | `km/h`, `mph`, `m/s`, `knots` |
+| `pressure`      | `hPa`, `inHg`                 |
+| `precipitation` | `mm`, `in`                    |
+| `clock`         | `12h`, `24h`                  |
+
+**`preferences/complications`** (no permission): the user's readings, one instance per filled
+slot in order (`instanceId` is the slot number; empty slots are left out). Each has `category`, `item` and `property` (`shortText`) and `index` (`numericValue`): read
+`category/item` as usual and use instance `index`'s `property`. An entry names no plugin and
+reveals nothing about the data, so the list is never filtered: reading an entry may ask the user
+for permission like any other read, and fails with `PERMISSION_DENIED` until they answer. Skip to
+the next entry when one can't be read.
+
+```javascript
+Pebble.subscribeToSource({
+  category: "preferences",
+  item: "complications",
+  onData: ({ instances }) => {
+    const slot = instances[0]?.properties;
+    if (!slot) return;
+    const property = slot.property.shortText.text;
+    Pebble.subscribeToSource({
+      category: slot.category.shortText.text,
+      item: slot.item.shortText.text,
+      properties: [property],
+      onData: ({ instances }) => show(instances[slot.index.numericValue.value]?.properties[property]),
+      onError: () => show(null),
+    });
+  },
+});
+```
+
+Because slots refer to instances by position, list your instances in a meaningful, stable order,
+most important first.
+
+**`preferences/weather_location`** (needs `Location`): the weather locations the user set up in the
+Pebble app, in their order. `instanceId` is the location's key; properties are `name`, `latitude`
+and `longitude` (absent for the current-location entry) and `current` (`boolean`). A weather plugin
+that serves one instance per location under the same `instanceId`s means the same place as the
+built-in one.
 
 # Writing a plugin
 

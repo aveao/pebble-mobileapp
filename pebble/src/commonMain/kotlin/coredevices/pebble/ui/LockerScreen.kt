@@ -33,6 +33,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.automirrored.filled.PlaylistAddCheck
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material.icons.filled.UploadFile
 import androidx.compose.material3.Card
@@ -503,6 +504,7 @@ fun LockerScreen(
                                 items: List<CommonApp>,
                                 highlightInLocker: Boolean,
                                 nativePlugins: List<PluginMetadata> = emptyList(),
+                                titleAction: (@Composable () -> Unit)? = null,
                                 onClick: (() -> Unit)? = null
                             ) {
                                 AppCarousel(
@@ -512,6 +514,7 @@ fun LockerScreen(
                                     topBarParams = topBarParams,
                                     highlightInLocker = highlightInLocker,
                                     nativePlugins = nativePlugins,
+                                    titleAction = titleAction,
                                     onClick = onClick,
                                 )
                             }
@@ -599,6 +602,20 @@ fun LockerScreen(
                                     myAppsToDisplay,
                                     highlightInLocker = false,
                                     nativePlugins = if (viewModel.type.value == AppType.Plugin) nativePlugins else emptyList(),
+                                    titleAction = if (viewModel.type.value == AppType.Plugin) {
+                                        {
+                                            IconButton(onClick = {
+                                                navBarNav.navigateTo(
+                                                    PebbleNavBarRoutes.WatchSettingsCategoryRoute(
+                                                        section = Section.Plugins.name,
+                                                        topLevelType = TopLevelType.Phone.name,
+                                                    )
+                                                )
+                                            }) {
+                                                Icon(Icons.Default.Settings, contentDescription = "Plugin settings")
+                                            }
+                                        }
+                                    } else null,
                                     onClick = {
                                         navBarNav.navigateTo(
                                             PebbleNavBarRoutes.MyCollectionRoute(
@@ -962,6 +979,7 @@ fun AppCarousel(
     topBarParams: TopBarParams,
     highlightInLocker: Boolean,
     nativePlugins: List<PluginMetadata> = emptyList(),
+    titleAction: (@Composable () -> Unit)? = null,
     onClick: (() -> Unit)? = null,
 ) {
     if (items.isEmpty() && nativePlugins.isEmpty()) {
@@ -969,19 +987,23 @@ fun AppCarousel(
         return
     }
     Column {
-        Row(modifier = Modifier.padding(horizontal = 16.dp)
-            .let {
-            if (onClick != null) {
-                it.clickable { onClick() }
-            } else {
-                it
+        Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Row(modifier = Modifier.padding(horizontal = 16.dp)
+                .let {
+                if (onClick != null) {
+                    it.clickable { onClick() }
+                } else {
+                    it
+                }
+            }, verticalAlignment = Alignment.CenterVertically) {
+                Text(title, fontSize = 24.sp, modifier = Modifier.padding(vertical = 8.dp))
+                Spacer(modifier = Modifier.width(7.dp))
+                if (onClick != null) {
+                    Icon(Icons.AutoMirrored.Default.ArrowForward, contentDescription = "See all", modifier = Modifier)
+                }
             }
-        }, verticalAlignment = Alignment.CenterVertically) {
-            Text(title, fontSize = 24.sp, modifier = Modifier.padding(vertical = 8.dp))
-            Spacer(modifier = Modifier.width(7.dp))
-            if (onClick != null) {
-                Icon(Icons.AutoMirrored.Default.ArrowForward, contentDescription = "See all", modifier = Modifier)
-            }
+            Spacer(modifier = Modifier.weight(1f))
+            titleAction?.invoke()
         }
         LazyRow(
             modifier = Modifier

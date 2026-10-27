@@ -16,6 +16,7 @@ import coredevices.pebble.services.MemfaultChunkQueue
 import coredevices.pebble.services.PebbleWebServices
 import coredevices.pebble.weather.WeatherFetcher
 import coredevices.pebble.weather.WeatherPlugin
+import coredevices.pebble.plugin.PreferencesPlugin
 import coredevices.util.AppResumed
 import coredevices.util.DoneInitialOnboarding
 import coredevices.util.PermissionRequester
@@ -68,6 +69,7 @@ class PebbleAppDelegate(
     private val weatherFetcher: WeatherFetcher,
     private val plugins: Plugins,
     private val weatherPlugin: WeatherPlugin,
+    private val preferencesPlugin: PreferencesPlugin,
     private val permissionRequestNotifier: PermissionRequestNotifier,
 ) {
     private val logger = Logger.withTag("PebbleAppDelegate")
@@ -75,6 +77,7 @@ class PebbleAppDelegate(
     fun init() {
         logger.d { "init()" }
         plugins.registerPlugin(weatherPlugin)
+        plugins.registerPlugin(preferencesPlugin)
         memfaultChunkQueue.startProcessing(GlobalScope)
         analyticsHeartbeatQueue.startProcessing(GlobalScope)
         permissionsRequester.init()

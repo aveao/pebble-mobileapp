@@ -99,6 +99,12 @@ object PebbleNavBarRoutes {
     data object WeatherRoute : NavBarRoute
 
     @Serializable
+    data object ComplicationsRoute : NavBarRoute
+
+    @Serializable
+    data object PreferredSourcesRoute : NavBarRoute
+
+    @Serializable
     data object CannedRepliesRoute : NavBarRoute
 
     @Serializable
@@ -269,6 +275,12 @@ fun NavGraphBuilder.addNavBarRoutes(
     }
     composable<PebbleNavBarRoutes.WeatherRoute> {
         WeatherScreen(nav, topBarParams)
+    }
+    composable<PebbleNavBarRoutes.ComplicationsRoute> {
+        ComplicationsScreen(nav, topBarParams)
+    }
+    composable<PebbleNavBarRoutes.PreferredSourcesRoute> {
+        PreferredSourcesScreen(nav, topBarParams)
     }
     composable<PebbleNavBarRoutes.CannedRepliesRoute> {
         CannedRepliesScreen(nav, topBarParams)

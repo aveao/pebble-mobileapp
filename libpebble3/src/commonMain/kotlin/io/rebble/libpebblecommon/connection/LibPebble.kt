@@ -245,6 +245,15 @@ interface Plugins {
     /** A disabled built-in is hidden from every caller, as if it weren't installed. */
     fun setBuiltInPluginEnabled(pluginUuid: Uuid, enabled: Boolean)
 
+    /** The user's choice of plugin for each source several plugins serve, keyed by `category/item`. */
+    val preferredSourcePlugins: StateFlow<Map<String, Uuid>>
+
+    /** Null goes back to the default order. */
+    fun setPreferredSourcePlugin(category: String, item: String, pluginUuid: Uuid?)
+
+    /** The plugin that answers a read of [category]/[item] that doesn't name one. */
+    fun sourcePlugin(category: String, item: String): PluginMetadata?
+
     /** The script behind [pluginUuid]'s settings page, or null if it has none. */
     fun configMessageTarget(pluginUuid: String): ConfigMessageTarget?
 

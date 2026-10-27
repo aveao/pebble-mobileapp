@@ -66,6 +66,7 @@ import coredevices.pebble.weather.WeatherFetcher
 import coredevices.pebble.config.ConfigPageSessions
 import coredevices.pebble.plugin.HostedPluginOAuthApi
 import coredevices.pebble.weather.WeatherPlugin
+import coredevices.pebble.plugin.PreferencesPlugin
 import coredevices.pebble.weather.YahooWeatherInterceptor
 import coredevices.pebble.permissions.PermissionRequestNotifier
 import dev.gitlive.firebase.Firebase
@@ -217,6 +218,7 @@ val watchModule = module {
     factoryOf(::PebbleFeatures)
     factoryOf(::WeatherFetcher)
     singleOf(::WeatherPlugin)
+    singleOf(::PreferencesPlugin)
     singleOf(::ConfigPageSessions)
     singleOf(::LanguagePackRepository)
     singleOf(::PluginSourceLoader)

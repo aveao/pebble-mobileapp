@@ -540,6 +540,12 @@ class FakeLibPebble : LibPebble {
 
     override fun configMessageTarget(pluginUuid: String): ConfigMessageTarget? = null
 
+    override val preferredSourcePlugins: StateFlow<Map<String, Uuid>> = MutableStateFlow(emptyMap())
+
+    override fun setPreferredSourcePlugin(category: String, item: String, pluginUuid: Uuid?) {}
+
+    override fun sourcePlugin(category: String, item: String): PluginMetadata? = null
+
     override suspend fun pluginFileHandles(appUuid: Uuid): List<FileHandleInfo> = emptyList()
 
     override suspend fun checkFilePermission(appUuid: Uuid, mode: FileAccessMode) = PermissionDecision.Denied
