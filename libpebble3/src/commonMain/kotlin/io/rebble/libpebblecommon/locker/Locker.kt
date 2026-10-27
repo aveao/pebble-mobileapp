@@ -412,7 +412,8 @@ class Locker(
         pbwApp.source().buffered().use {
             lockerPBWCache.addPBWFileForApp(lockerEntry.id, pbwApp.info.versionLabel, it)
         }
-        val tasks = if (loadOnWatch) {
+        // A plugin-only pbw never reaches the watch.
+        val tasks = if (loadOnWatch && type != AppType.Plugin) {
             watchManager.watches.value.filterIsInstance<ConnectedPebbleDevice>().map {
                 libPebbleCoroutineScope.async {
                     val entryStatus = lockerEntryDao.existsOnWatch(
