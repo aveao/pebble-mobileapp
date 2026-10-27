@@ -8,7 +8,7 @@ Plugins are nearly here (finally). A plugin is a small piece of JavaScript that 
 It has a generic API, designed to allow any type of data to be exposed, in multiple formats.
 
 This doc lives here while plugins are under active development, and will move once they're stable.
-Right now they're supported in the Pebble mobile app (v1.14.0), but are experimental and disabled by
+Right now they're supported in the Pebble mobile app (v1.16.x), but are in preview, and disabled by
 default.
 
 ## Why?
@@ -33,8 +33,11 @@ default.
 - Build a watchface or app that uses plugin data.
 - Build a plugin.
 
-First, enable plugins in the mobile app (v1.16.0 or above): **Settings → Plugins → Plugins / permissions preview**. A **Plugins** tab appears in the Apps
+First, enable plugins in the mobile app (v1.16.x or above): **Settings → Plugins → Plugins / permissions preview**. A **Plugins** tab appears in the Apps
 screen listing plugins and their settings pages. The demo apps below are on the app store.
+
+Note: this document represents the API/functionality of mobile app version 1.16.x. Apps/plugins built
+previously may not work, as there have been many changes to both in 1.16.
 
 ## Try the demo apps and plugins
 
@@ -702,9 +705,6 @@ Build with `pebble build`, using SDK 4.42 or later and a `pebble-tool` with plug
 plugin-only project sets `"projectType": "plugin"` in `package.json`. The SDK marks the pbw as using
 [permissions](#declaring) (`manifestVersion` 2) by default. The plugins in
 [coredevices/pebble-plugins](https://github.com/coredevices/pebble-plugins) are worked examples.
-
-Sideloading plugins is supported from v1.14.0 of the mobile app - but the manifest format changed
-in v1.15.0 (along with several other parts of the API).
 
 # Future
 
