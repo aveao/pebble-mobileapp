@@ -11,6 +11,7 @@ import coredevices.firestore.UsersDao
 import coredevices.pebble.firmware.BatteryChargedNotifier
 import coredevices.pebble.firmware.FirmwareUpdateUiTracker
 import coredevices.pebble.services.AppstoreSourceInitializer
+import coredevices.pebble.services.BundledAppMigration
 import coredevices.pebble.services.AnalyticsHeartbeatQueue
 import coredevices.pebble.services.MemfaultChunkQueue
 import coredevices.pebble.services.PebbleWebServices
@@ -71,6 +72,7 @@ class PebbleAppDelegate(
     private val weatherPlugin: WeatherPlugin,
     private val preferencesPlugin: PreferencesPlugin,
     private val permissionRequestNotifier: PermissionRequestNotifier,
+    private val bundledAppMigration: BundledAppMigration,
 ) {
     private val logger = Logger.withTag("PebbleAppDelegate")
 
@@ -99,6 +101,7 @@ class PebbleAppDelegate(
                 libPebble.init()
             }
             permissionRequestNotifier.init()
+            bundledAppMigration.init()
             if (platform == Platform.Android) {
                 // Onboarding on Android grants BT permissions, which may have been missing when
                 // libPebble.init() ran synchronously above. Kick off post-permission work now.

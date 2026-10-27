@@ -329,6 +329,14 @@ class Locker(
         }, config.value.lockerSyncLimitV2)
     }
 
+    override suspend fun clearSideloaded(id: Uuid) {
+        val entry = lockerEntryDao.getEntry(id) ?: return
+        if (!entry.sideloaded) return
+        // The store copy can share the sideloaded pbw's version, which would keep the cached one.
+        lockerPBWCache.deleteApp(id)
+        lockerEntryDao.insertOrReplace(entry.copy(sideloaded = false))
+    }
+
     suspend fun getApp(uuid: Uuid): LockerEntry? = lockerEntryDao.getEntry(uuid)
 
     suspend fun update(locker: LockerModelWrapper) {

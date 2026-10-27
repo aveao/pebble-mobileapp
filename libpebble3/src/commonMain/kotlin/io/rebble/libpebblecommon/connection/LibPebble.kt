@@ -54,7 +54,6 @@ import io.rebble.libpebblecommon.notification.NotificationListenerConnection
 import io.rebble.libpebblecommon.notification.VibePattern
 import io.rebble.libpebblecommon.packets.ProtocolCapsFlag
 import io.rebble.libpebblecommon.performPlatformSpecificInit
-import io.rebble.libpebblecommon.plugin.BundledAppInstaller
 import io.rebble.libpebblecommon.plugin.LockerPluginLoader
 import io.rebble.libpebblecommon.permissions.AppPermissions
 import io.rebble.libpebblecommon.permissions.AppPermissionsApi
@@ -433,6 +432,8 @@ interface LockerApi {
     suspend fun removeApp(id: Uuid): Boolean
     suspend fun addAppToLocker(app: LockerEntry, granted: Map<String, Boolean?> = emptyMap())
     suspend fun addAppsToLocker(apps: List<LockerEntry>)
+    /** Lets the next locker sync replace a sideloaded app with its copy in the user's locker. */
+    suspend fun clearSideloaded(id: Uuid)
     fun restoreSystemAppOrder()
     val activeWatchface: StateFlow<LockerWrapper?>
 }
@@ -502,7 +503,6 @@ class LibPebble3(
     private val watchManager: WatchManager,
     private val scanning: Scanning,
     private val locker: Locker,
-    private val bundledAppInstaller: BundledAppInstaller,
     private val lockerPluginLoader: LockerPluginLoader,
     private val timeChanged: TimeChanged,
     private val webSyncManager: RequestSync,
@@ -572,7 +572,6 @@ class LibPebble3(
             vibePatternDao.ensureAllDefaultsInserted()
         }
         locker.init(this)
-        bundledAppInstaller.init(this)
         lockerPluginLoader.init()
 
         performPlatformSpecificInit()

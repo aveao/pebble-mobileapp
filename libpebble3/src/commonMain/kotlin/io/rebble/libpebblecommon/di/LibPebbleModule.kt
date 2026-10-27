@@ -129,7 +129,6 @@ import io.rebble.libpebblecommon.metadata.WatchColor
 import io.rebble.libpebblecommon.notification.ContactsApi
 import io.rebble.libpebblecommon.notification.NotificationApi
 import io.rebble.libpebblecommon.packets.ProtocolCapsFlag
-import io.rebble.libpebblecommon.plugin.BundledAppInstaller
 import io.rebble.libpebblecommon.plugin.JsPluginFactory
 import io.rebble.libpebblecommon.plugin.CalendarPlugin
 import io.rebble.libpebblecommon.plugin.FindMyPhonePlugin
@@ -414,7 +413,6 @@ fun initKoin(
                         get(),
                         get(),
                         get(),
-                        get(),
                         get(), // lockerPluginLoader
                         get(),
                         get(),
@@ -507,7 +505,6 @@ fun initKoin(
                     )
                 }
                 single { JsPluginFactory(get(), get(), get(), get(), get(), get(), get(), get(), get(), get(), pluginOAuthApi) }
-                singleOf(::BundledAppInstaller)
                 singleOf(::LockerPluginLoader)
                 singleOf(::FirmwareDownloader)
                 singleOf(::InterruptedFirmwareUpdates)
