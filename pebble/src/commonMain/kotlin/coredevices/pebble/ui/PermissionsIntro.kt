@@ -13,6 +13,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogProperties
 import com.russhwolf.settings.Settings
@@ -28,16 +29,53 @@ fun Settings.hasSeenPermissionsIntro() = getBoolean(HAS_SEEN_PERMISSIONS_INTRO_S
 fun Settings.setHasSeenPermissionsIntro(seen: Boolean) = set(HAS_SEEN_PERMISSIONS_INTRO_SETTINGS_KEY, seen)
 
 fun PermissionPolicy.displayName(): String = when (this) {
-    PermissionPolicy.AskIfExfiltrating -> "With network access"
+    PermissionPolicy.AskIfExfiltrating -> "When needed"
     PermissionPolicy.AlwaysAsk -> "Always"
     PermissionPolicy.NeverAsk -> "Never"
 }
 
 fun PermissionPolicy.description(): String = when (this) {
     PermissionPolicy.AskIfExfiltrating ->
-        "Apps ask before going online or changing anything, and before reading your data if they could send it off your phone."
+        "Apps ask before connecting to the internet or acting for you (e.g. controlling your music or ringing your phone)"
     PermissionPolicy.AlwaysAsk -> "Apps ask before using any permission."
-    PermissionPolicy.NeverAsk -> "Apps can use any permission you haven't turned off on the app's page."
+    PermissionPolicy.NeverAsk -> "Apps can use any permission, unless you explicitly turn it off on the app's page"
+}
+
+private fun PermissionPolicy.details(): String = when (this) {
+    PermissionPolicy.AskIfExfiltrating ->
+        "Apps that can't send anything off your phone (no internet access and no phone companion app) can read your data, " +
+            "like your location, calendar, notifications or music, without asking, because it can't go anywhere. " +
+            "Apps that could send it off your phone ask first.\n\n" +
+            "Every app asks before going online, and before acting for you: adding timeline pins, controlling " +
+            "music, launching apps, changing watch settings, ringing your phone, or using a plugin's actions."
+    PermissionPolicy.AlwaysAsk ->
+        "Apps ask the first time they use any permission, including reading data they couldn't send anywhere."
+    PermissionPolicy.NeverAsk ->
+        "Apps get any permission they ask for without asking you, including going online. Anything you've " +
+            "turned off on an app's page stays off. Not recommended!"
+}
+
+/** Every mode, for the setting's info popup. */
+@Composable
+fun PermissionPolicyDetails() {
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Text(
+            "Whichever you choose, you can review and change each app's permissions on its page. Apps built before " +
+                    "permissions existed have their own setting, \"Ask before older apps use permissions\".",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        PermissionPolicy.entries.forEach { policy ->
+            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(
+                    if (policy == PermissionPolicy.AskIfExfiltrating) "${policy.displayName()} (default)" else policy.displayName(),
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold,
+                )
+                Text(policy.details(), style = MaterialTheme.typography.bodySmall)
+            }
+        }
+    }
 }
 
 /** What permissions are, and when apps ask; shown once, in a dialog or in onboarding. */
@@ -65,8 +103,8 @@ fun PermissionsIntroContent(settings: SettingsItemsState?, modifier: Modifier = 
         )
         if (hasWatch) {
             Text(
-                "Older apps which weren't built for the Permissions system are not affected " +
-                        "by default, unless you choose to enforce permissions for them in Settings.",
+                "Older apps which weren't built for the Permissions system are not affected, " +
+                        "unless you choose to enforce permissions for them in Settings -> Apps.",
                 style = MaterialTheme.typography.bodySmall,
             )
         }
