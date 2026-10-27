@@ -204,6 +204,7 @@ fun WatchPref<*>.section(): Section = when (this) {
     BoolWatchPref.AlternativeNotificationStyle -> Section.Notifications
     BoolWatchPref.NotificationVibeDelay -> Section.Notifications
     BoolWatchPref.NotificationBacklight -> Section.Notifications
+    BoolWatchPref.RespectPhoneSilence -> Section.Notifications
     NumberWatchPref.NotificationTimeoutMs -> Section.Notifications
     BoolWatchPref.MenuScrollWrapAround -> Section.Display
     EnumWatchPref.MenuScrollVibe -> Section.Display

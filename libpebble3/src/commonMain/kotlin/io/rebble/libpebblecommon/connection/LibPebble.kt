@@ -51,6 +51,7 @@ import io.rebble.libpebblecommon.locker.LockerWrapper
 import io.rebble.libpebblecommon.metadata.WatchHardwarePlatform
 import io.rebble.libpebblecommon.notification.NotificationApi
 import io.rebble.libpebblecommon.notification.NotificationListenerConnection
+import io.rebble.libpebblecommon.notification.RespectDoNotDisturbMigrator
 import io.rebble.libpebblecommon.notification.VibePattern
 import io.rebble.libpebblecommon.packets.ProtocolCapsFlag
 import io.rebble.libpebblecommon.performPlatformSpecificInit
@@ -534,6 +535,7 @@ class LibPebble3(
     pluginClient: PluginClient,
     pluginFileAccess: PluginFileAccess,
     private val notificationReplies: NotificationReplies,
+    private val respectDoNotDisturbMigrator: RespectDoNotDisturbMigrator,
 ) : LibPebble, Scanning by scanning, RequestSync by webSyncManager, LockerApi by locker,
     NotificationApps by notificationApi, Calendar by phoneCalendarSyncer,
     OtherPebbleApps by otherPebbleApps, PKJSToken by jsTokenUtil, Watches by watchManager,
@@ -552,6 +554,7 @@ class LibPebble3(
             return
         }
         appPermissions.init()
+        libPebbleCoroutineScope.launch { respectDoNotDisturbMigrator.migrateIfNeeded() }
         WatchHardwarePlatform.init(libPebbleCoroutineScope, libPebbleConfigFlow.config)
         bluetoothStateProvider.init()
         gattServerManager.init()

@@ -204,6 +204,12 @@ class TimelineItem(
         PERSIST_QUICK_VIEW(5),
 
         /**
+         * Notification was silenced on the phone (e.g. Do Not Disturb). The watch delivers it
+         * quietly when the notifRespectPhoneSilence pref is on.
+         */
+        SILENT(6),
+
+        /**
          * Marks a notification as read (dismisses if visible, and removes actions).
          */
         STATE_READ(12),

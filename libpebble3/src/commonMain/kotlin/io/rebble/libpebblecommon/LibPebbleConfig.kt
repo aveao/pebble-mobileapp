@@ -174,9 +174,7 @@ data class NotificationConfig(
      * Mute all call alerts on the phone when at least one watch is connected
      */
     val mutePhoneCallSoundsWhenConnected: Boolean = false,
-    /**
-     * When [true], any notifications muted by the phone's do not disturb will not be forwarded to the watch
-     */
+    /** Legacy; only read to migrate into the RespectPhoneSilence watch pref. */
     val respectDoNotDisturb: Boolean = false,
     /**
      * Default new apps to be enabled (else they will be disabled).

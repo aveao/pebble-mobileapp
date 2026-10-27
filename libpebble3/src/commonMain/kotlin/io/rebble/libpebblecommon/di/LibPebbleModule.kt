@@ -128,6 +128,7 @@ import io.rebble.libpebblecommon.locker.WebSyncManagerProvider
 import io.rebble.libpebblecommon.metadata.WatchColor
 import io.rebble.libpebblecommon.notification.ContactsApi
 import io.rebble.libpebblecommon.notification.NotificationApi
+import io.rebble.libpebblecommon.notification.RespectDoNotDisturbMigrator
 import io.rebble.libpebblecommon.packets.ProtocolCapsFlag
 import io.rebble.libpebblecommon.plugin.JsPluginFactory
 import io.rebble.libpebblecommon.plugin.CalendarPlugin
@@ -392,6 +393,7 @@ fun initKoin(
                 single { get<Database>().weatherAppDao() }
                 single { get<Database>().appPrefsDao() }
                 singleOf(::LegacyBtClassicMigrator)
+                singleOf(::RespectDoNotDisturbMigrator)
                 singleOf(::WatchManager) binds arrayOf(WatchConnector::class, Watches::class)
                 single { bleScanner(get()) }
                 singleOf(::RealScanning) bind Scanning::class
@@ -414,6 +416,7 @@ fun initKoin(
                         get(),
                         get(),
                         get(), // lockerPluginLoader
+                        get(),
                         get(),
                         get(),
                         get(),
