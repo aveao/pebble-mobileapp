@@ -108,6 +108,9 @@ data class SourceInstance(
 ) {
     companion object {
         const val PROPERTY_NAME = "name"
+
+        /** The Android package an instance's data came from, which per-package permissions are scoped by. */
+        const val PROPERTY_PACKAGE = "package"
     }
 }
 

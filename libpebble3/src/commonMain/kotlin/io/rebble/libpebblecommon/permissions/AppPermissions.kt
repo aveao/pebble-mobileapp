@@ -174,6 +174,13 @@ class AppPermissions(
     suspend fun check(appUuid: Uuid, permission: String): PermissionDecision =
         subjectOf(appUuid)?.let { check(it, permission) } ?: PermissionDecision.Denied
 
+    /** What the app declared under [permission] (`Notifications/<package>`), else [permission] itself. */
+    suspend fun callerKeys(appUuid: Uuid, permission: String): List<String> {
+        if (permissionOf(permission) != permission) return listOf(permission)
+        return dao.getByAppUuid(appUuid).map { it.permission }.filter { permissionOf(it) == permission }
+            .ifEmpty { listOf(permission) }
+    }
+
     suspend fun requestAll(
         subject: PermissionSubject,
         permissions: Collection<String>,

@@ -4,6 +4,8 @@ import com.russhwolf.settings.MapSettings
 import io.rebble.libpebblecommon.WatchConfig
 import io.rebble.libpebblecommon.asFlow
 import io.rebble.libpebblecommon.permissions.PermissionSubject
+import io.rebble.libpebblecommon.permissions.notificationsKey
+import io.rebble.libpebblecommon.plugin.PluginPermissions.NOTIFICATIONS
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.Flow
@@ -54,6 +56,8 @@ private fun served(plugin: Uuid) = SourceUpdate.Data(SourceEnvelope(plugin.toStr
 
 class PluginSourcesTest {
     private val readAs = mutableListOf<Pair<PluginCaller, Uuid>>()
+    /** What the reader declared, per permission; otherwise the bare permission. */
+    private val declared = mutableMapOf<String, List<String>>()
 
     private fun sources(
         vararg plugins: Plugin,
@@ -61,7 +65,7 @@ class PluginSourcesTest {
     ): PluginSources {
         val registry = PluginRegistry(plugins.filterIsInstance<NativePlugin>().toSet(), WatchConfig(enablePlugins = true).asFlow(), MapSettings())
         plugins.filterNot { it is NativePlugin }.forEach(registry::registerPlugin)
-        return PluginSources(registry, { PermissionSubject(it, legacy = false) }) { caller, plugin, _ ->
+        return PluginSources(registry, { PermissionSubject(it, legacy = false) }, { _, p -> declared[p] ?: listOf(p) }) { caller, plugin, _ ->
             readAs += caller to plugin.pluginUuid
             upstream(plugin)
         }
@@ -86,6 +90,24 @@ class PluginSourcesTest {
 
         val leaky = sources.read(plugin(READER, source("weather", "location", "Location"), source("weather", "summary")), request)
         assertEquals(PluginErrors.PERMISSION_DENIED, assertIs<SourceUpdate.Error>(leaky).code)
+    }
+
+    @Test
+    fun aReaderHoldingSomePackagesNeedsItsCallersToHoldAtLeastThose() = runTest {
+        val maps = notificationsKey("com.maps")
+        val sources = sources(BuiltIn(listOf(source("notifications", "notification", NOTIFICATIONS))))
+        val request = SourceRequest("notifications", "notification")
+        fun nav(vararg callerPermissions: String) = plugin(READER, source("navigation", "step", *callerPermissions))
+        fun allowed(update: SourceUpdate) = update !is SourceUpdate.Error
+
+        declared[NOTIFICATIONS] = listOf(maps)
+        assertEquals(true, allowed(sources.read(nav(maps), request)))
+        assertEquals(true, allowed(sources.read(nav(NOTIFICATIONS), request)))
+        assertEquals(false, allowed(sources.read(nav(), request)))
+
+        declared[NOTIFICATIONS] = listOf(NOTIFICATIONS)
+        assertEquals(false, allowed(sources.read(nav(maps), request)))
+        assertEquals(true, allowed(sources.read(nav(NOTIFICATIONS), request)))
     }
 
     @Test

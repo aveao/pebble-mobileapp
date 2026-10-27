@@ -211,6 +211,12 @@ The built-in permissions are `Internet`, `LocalNetwork`, `Location`, `Microphone
 
 - Each `Internet` domain is its own permission and covers its subdomains. `LocalNetwork` covers
   devices on the LAN.
+- `Notifications` can be narrowed to some apps (Android):
+  `{ "name": "Notifications", "parameters": { "packages": ["com.google.android.apps.maps"] } }`.
+  Each package is its own permission ("Read your notifications from …"), and you only see those
+  apps' notifications (by their `package` property). Bare `Notifications` is all of them, and
+  allowing it allows every package. Ask for just the apps you need if you can: users are far
+  more likely to allow one app's notifications than all of them.
 - `ReadFiles` and `WriteFiles` let your settings page ask the user for a file or folder. They take
   no parameters: you can't name paths in the manifest. Each entry the user picks is its own
   permission (`ReadFiles/<path>`, or `WriteFiles/<path>` for read-write), listed on the app's page
@@ -232,7 +238,11 @@ before permissions: internet access, location and timeline pins if it has Pebble
 
 Sources and actions guard themselves with **caller permissions**: what an app must hold to use
 them. `calendar/event` needs `Calendar`, `notifications/notification` needs `Notifications`,
-`weather/*` needs `Location`.
+`weather/*` needs `Location`. Caller permissions take the same parameters as `usesPermissions`,
+so a source can ask its callers for one app's notifications rather than all of them. If your
+source needs bare `Notifications`, a caller holding only some apps' is refused
+(`PERMISSION_DENIED`) unless your instances have a `package` property to narrow them by; so
+either add one, or ask for those apps specifically.
 
 A plugin can also define its own permissions, to guard its sources and actions:
 
@@ -556,9 +566,12 @@ What a plugin has to work with:
   });
   ```
 
-  Either way you read as your plugin, with its permissions, and only a source whose caller
-  permissions every one of your sources and actions also requires, so what you read can't reach
-  a caller who couldn't read it. A plugin can't read itself, or one that already reads it.
+  Either way you read as your plugin, with its permissions. What you read can reach your callers,
+  so for each caller permission the source needs, every one of your sources and actions must
+  require at least as much of its callers as you declared yourself: a plugin that declared
+  `Notifications` for Maps only must require (at least) Maps' notifications of its callers, and
+  one that declared all notifications must require all of them. A plugin can't read itself, or
+  one that already reads it.
 - **`Pebble.refreshSources(["finance/stock"])`** when data changes outside a request (for example,
   the user added a ticker on the settings page).
 - **`Pebble.oauth`** for sign-in with OAuth providers, without the plugin ever holding a client

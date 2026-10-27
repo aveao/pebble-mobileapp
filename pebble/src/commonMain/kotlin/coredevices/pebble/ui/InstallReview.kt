@@ -197,7 +197,7 @@ fun permissionLabel(key: String, defined: Map<String, PluginDefinedPermission>):
     PluginPermissions.GLOBAL_INTERNET -> "Connect to any website or local device"
     PluginPermissions.LOCATION -> "Use your location"
     PluginPermissions.WATCH_MICROPHONE -> "Use your watch microphone"
-    PluginPermissions.NOTIFICATIONS -> "Read your notifications"
+    PluginPermissions.NOTIFICATIONS -> packageOf(key)?.let { "Read your notifications from $it" } ?: "Read all your notifications"
     PluginPermissions.CALENDAR -> "Read your calendar"
     PluginPermissions.CONTACTS -> "Read your contacts"
     PluginPermissions.TIMELINE -> "Add pins to your timeline"
