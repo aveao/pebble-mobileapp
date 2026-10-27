@@ -47,6 +47,7 @@ import kotlin.coroutines.EmptyCoroutineContext
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
+import kotlin.test.assertNull
 import kotlin.time.Clock
 import kotlin.time.Instant
 import kotlin.uuid.Uuid
@@ -636,6 +637,18 @@ class WaitingRequestsTest {
     }
 
     @Test
+    fun configPagesReachOnlyGrantedDomainsUnlessTheAppMayReachAnyHost() = runTest {
+        val permissions = permissions(dao)
+        permissions.recordRequested(APP, listOf(internetKey("a.example.com"), internetKey("b.example.com")))
+        permissions.setDecisions(APP, mapOf(internetKey("a.example.com") to true, internetKey("b.example.com") to false))
+        assertEquals(listOf("a.example.com"), permissions.grantedDomains(APP))
+        permissions.setDecisions(APP, mapOf(LOCAL_NETWORK to true))
+        assertNull(permissions.grantedDomains(APP))
+        assertNull(permissions(dao, config = WatchConfig(enablePlugins = false)).grantedDomains(APP))
+        assertNull(permissions(FakePermissionDao(), installed = installedAs(subject(legacy = true))).grantedDomains(APP))
+    }
+
+    @Test
     fun aNullDecisionRecordsASeenUndecidedRow() = runTest {
         permissions(dao).setDecisions(APP, mapOf(CALENDAR to null))
         val row = dao.row(CALENDAR)!!
@@ -784,6 +797,12 @@ class InstallReviewTest {
             declares(internet("a.example.com", ".B.example.com"), PluginPermission(LOCAL_NETWORK)).all,
         )
         assertEquals(listOf(INTERNET), declares(PluginPermission(INTERNET)).all)
+    }
+
+    @Test
+    fun aDomainThatIsntAPlainHostnameIsDropped() {
+        assertEquals(listOf(internetKey("ok.example.com")), declares(internet("ok.example.com", "*", "x.com https:", "a.com;b")).all)
+        assertEquals(emptyList(), declares(internet("*")).all)
     }
 
     @Test

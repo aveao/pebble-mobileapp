@@ -426,6 +426,10 @@ interface LockerApi {
      * none, so callers fall back to the PKJS `showConfiguration` flow.
      */
     suspend fun appConfigPageUrl(uuid: Uuid): String?
+    /** Whether [uuid]'s config page may load [url], checked like the app's own requests. */
+    suspend fun mayLoadInConfigPage(uuid: Uuid, url: String): Boolean
+    /** The domains [uuid]'s config page may connect to, each covering its subdomains; null for any. */
+    suspend fun configPageDomains(uuid: Uuid): List<String>?
     /** A text file from an installed app's pbw, or null if the app or file is missing. */
     suspend fun getAppFile(uuid: Uuid, name: String): String?
     suspend fun setAppOrder(id: Uuid, order: Int)

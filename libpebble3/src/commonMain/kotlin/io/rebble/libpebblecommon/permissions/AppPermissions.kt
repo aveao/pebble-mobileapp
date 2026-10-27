@@ -126,6 +126,19 @@ class AppPermissions(
         return decision
     }
 
+    /** The domains (each covering its subdomains) [appUuid] may reach; null if it may reach any host. */
+    suspend fun grantedDomains(appUuid: Uuid): List<String>? {
+        val config = watchConfig.value
+        if (!config.enablePlugins) return null
+        val subject = subjectOf(appUuid) ?: return emptyList()
+        val rows = dao.getByAppUuid(appUuid)
+        fun granted(permission: String) =
+            decidePermission(permission, subject, rows, config, emptyMap()) == PermissionDecision.Granted
+        if (subject.legacy) return if (granted(PluginPermissions.GLOBAL_INTERNET)) null else emptyList()
+        if (granted(PluginPermissions.INTERNET) || granted(PluginPermissions.LOCAL_NETWORK)) return null
+        return rows.mapNotNull { domainOf(it.permission) }.filter { isHostname(it) && granted(internetKey(it)) }
+    }
+
     /** As [check], but records the use. [wait] waits for the user's answer: never from a blocking callback. */
     suspend fun request(subject: PermissionSubject, permission: String, wait: Boolean = false): PermissionDecision {
         val config = watchConfig.value

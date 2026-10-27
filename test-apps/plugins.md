@@ -634,6 +634,10 @@ can message your plugin/PKJS code in real-time while it's open.
 Set `configPage` in `package.json` to an HTML file in the project (bundled into the pbw) or a URL.
 If it's set, it's used instead of the legacy `showConfiguration` flow.
 
+A settings page has the same network access as your app: everything it loads or connects to
+(scripts, styles, fonts, images, `fetch`, WebSockets) must be on a domain you declared in `Internet`
+and the user allowed. Bundle what the page needs rather than loading it from a CDN.
+
 ```javascript
 // in the page
 Pebble.addEventListener("ready", (e) => { /* e.target ('plugin' or 'pkjs') is up */ });

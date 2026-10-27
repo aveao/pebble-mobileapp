@@ -104,8 +104,13 @@ fun PluginPermission.keys(): List<String> {
     if (!packages.isNullOrEmpty()) return packages.map(::notificationsKey)
     val domains = parameters[PluginPermissions.PARAM_DOMAINS]?.takeIf { name == PluginPermissions.INTERNET }
     if (domains.isNullOrEmpty()) return listOf(name)
-    return domains.map { internetKey(it.lowercase().removePrefix(".").trimEnd('.')) }
+    return domains.map { it.lowercase().removePrefix(".").trimEnd('.') }.filter(::isHostname).map(::internetKey)
 }
+
+private val HOSTNAME = Regex("[a-z0-9-]+(\\.[a-z0-9-]+)*")
+
+/** Domains end up in CSPs and content-blocker patterns, so nothing but a plain hostname. */
+fun isHostname(domain: String): Boolean = HOSTNAME.matches(domain)
 
 /** Most specific first. A `WriteFiles` decision covers the matching `ReadFiles` when it has none of its own. */
 internal fun coveringKeys(key: String): List<String> {

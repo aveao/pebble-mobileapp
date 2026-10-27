@@ -219,6 +219,15 @@ class Locker(
         return pbwFor(uuid)?.getTextFile(page)?.let { "data:text/html;charset=utf-8,${it.encodeURLPathPart()}" }
     }
 
+    override suspend fun mayLoadInConfigPage(uuid: Uuid, url: String): Boolean {
+        val title = lockerEntryDao.getEntry(uuid)?.title ?: return false
+        val verdict = NetworkGate(permissions, title, uuid).check(url, wait = false)
+        if (verdict is PluginNetworkVerdict.Denied) logger.w { "Blocked $title's config page loading $url: ${verdict.reason}" }
+        return verdict is PluginNetworkVerdict.Allowed
+    }
+
+    override suspend fun configPageDomains(uuid: Uuid): List<String>? = permissions.grantedDomains(uuid)
+
     override suspend fun getAppFile(uuid: Uuid, name: String): String? = pbwFor(uuid)?.getTextFile(name)
 
     override suspend fun setAppOrder(id: Uuid, order: Int) {

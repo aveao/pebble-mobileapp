@@ -244,6 +244,10 @@ class FakeLibPebble : LibPebble {
     override suspend fun clearSideloaded(id: Uuid) {
     }
 
+    override suspend fun mayLoadInConfigPage(uuid: Uuid, url: String): Boolean = true
+
+    override suspend fun configPageDomains(uuid: Uuid): List<String>? = null
+
     override fun restoreSystemAppOrder() {
     }
 
