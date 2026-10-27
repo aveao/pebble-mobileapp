@@ -11,6 +11,7 @@ import coredevices.database.AppstoreCollection
 import coredevices.database.AppstoreCollectionDao
 import coredevices.database.AppstoreSource
 import coredevices.database.HEARTED_COLLECTION_SLUG
+import coredevices.database.PLUGIN_DATA_APPS_SLUG
 import coredevices.database.HeartEntity
 import coredevices.database.HeartsDao
 import coredevices.pebble.Platform
@@ -36,6 +37,7 @@ import io.ktor.http.HttpStatusCode
 import io.ktor.http.Url
 import io.ktor.http.isSuccess
 import io.ktor.http.parseUrl
+import io.rebble.libpebblecommon.connection.LibPebble
 import io.rebble.libpebblecommon.locker.AppType
 import io.rebble.libpebblecommon.metadata.WatchType
 import io.rebble.libpebblecommon.web.LockerEntry
@@ -61,6 +63,7 @@ class AppstoreService(
     private val pebbleWebServices: PebbleWebServices,
     private val pebbleHttpClient: PebbleHttpClient,
     private val heartsDao: HeartsDao,
+    private val libPebble: LibPebble,
 ) {
     private val scope = CoroutineScope(Dispatchers.Default)
 
@@ -100,6 +103,7 @@ class AppstoreService(
     private companion object {
         // How many hearted apps to surface in the home-screen Hearted carousel.
         const val HEARTED_HOME_PREVIEW_LIMIT = 20
+        const val PLUGIN_DATA_APPS_TITLE = "Works with Plugins"
     }
 
     /**
@@ -411,7 +415,7 @@ class AppstoreService(
             logger.w(e) { "Error loading app store home" }
             return null
         }
-        val cleaned = rawHome?.copy(applications = rawHome.applications.filter { app ->
+        val cleaned = rawHome?.withPluginDataApps(type, hardwarePlatform)?.copy(applications = rawHome.applications.filter { app ->
             if (app.uuid == null) return@filter false
             try {
                 if (Uuid.parse(app.uuid) == Uuid.NIL) {
@@ -428,6 +432,42 @@ class AppstoreService(
         return cleaned?.let { augmentHomeWithHearted(it, type) }
     }
 
+    private suspend fun AppStoreHome.withPluginDataApps(type: AppType, hardwarePlatform: WatchType?): AppStoreHome {
+        if (!source.isPebbleFeed() || type == AppType.Plugin || !libPebble.config.value.watchConfig.enablePlugins) return this
+        appstoreCollectionDao.insertCollectionIfMissing(
+            AppstoreCollection(
+                sourceId = source.id,
+                title = PLUGIN_DATA_APPS_TITLE,
+                slug = PLUGIN_DATA_APPS_SLUG,
+                type = type,
+                enabled = true,
+                synthetic = true,
+            )
+        )
+        val apps = try {
+            httpClient.get(url = Url("${source.url}/v1/apps/collection/$PLUGIN_DATA_APPS_SLUG/${type.storeString()}")) {
+                parameter("platform", platform.storeString())
+                hardwarePlatform?.let { parameter("hardware", it.codename) }
+                parameter("limit", HEARTED_HOME_PREVIEW_LIMIT)
+            }.takeIf { it.status.isSuccess() }?.body<StoreAppResponse>()?.data
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            logger.w(e) { "Error loading $PLUGIN_DATA_APPS_SLUG" }
+            null
+        }
+        if (apps.isNullOrEmpty()) return this
+        return copy(
+            applications = (applications + apps).distinctBy { it.id },
+            collections = collections + StoreCollection(
+                applicationIds = apps.map { it.id },
+                links = emptyMap(),
+                name = PLUGIN_DATA_APPS_TITLE,
+                slug = PLUGIN_DATA_APPS_SLUG,
+            ),
+        )
+    }
+
     /** Top Charts replaces Most Loved on our store. */
     private fun AppStoreHome.withoutHiddenCollections(): AppStoreHome =
         if (source.isPebbleFeed()) copy(collections = collections.filter { it.slug != "most-loved" }) else this
@@ -436,6 +476,7 @@ class AppstoreService(
         val dbRows = appstoreCollectionDao.getAllCollections()
             .filter { it.sourceId == source.id && it.type == type }
             .sortedBy { it.id }
+            .sortedByDescending { it.slug == PLUGIN_DATA_APPS_SLUG }
         val heartedRow = dbRows.firstOrNull { it.synthetic && it.slug == HEARTED_COLLECTION_SLUG }
         val showHearted = heartedRow?.enabled == true
 

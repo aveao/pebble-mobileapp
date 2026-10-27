@@ -89,6 +89,7 @@ import coreapp.pebble.generated.resources.apps
 import coredevices.database.AppstoreCollectionDao
 import coredevices.database.AppstoreSource
 import coredevices.database.AppstoreSourceDao
+import coredevices.database.PLUGIN_DATA_APPS_SLUG
 import coredevices.libindex.LibIndex
 import coredevices.libindex.device.KnownIndexDevice
 import coredevices.pebble.PebbleDeepLinkHandler
@@ -333,12 +334,13 @@ fun LockerScreen(
             return
         }
         val storeHomeForType = viewModel.storeHomeAllFeeds[viewModel.type.value]
-        val storeHome = remember(storeHomeForType, collections, viewModel.type.value) {
+        val storeHome = remember(storeHomeForType, collections, viewModel.type.value, pluginsEnabled) {
             val collectionRules = collections!!.groupBy { it.sourceId }
             storeHomeForType?.map { (source, home) ->
                 val homeFiltered = home.let {
                     it.copy(collections = it.collections.filter { col ->
-                        collectionRules[source.id]?.firstOrNull { it.slug == col.slug && it.type == viewModel.type.value }?.enabled ?: false
+                        (pluginsEnabled || col.slug != PLUGIN_DATA_APPS_SLUG) &&
+                            collectionRules[source.id]?.firstOrNull { it.slug == col.slug && it.type == viewModel.type.value }?.enabled ?: false
                     })
                 }
                 val categories = homeFiltered.categories.filter{

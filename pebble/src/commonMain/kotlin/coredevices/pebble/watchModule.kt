@@ -169,7 +169,7 @@ val watchModule = module {
         )
     ) }
     factory { p ->
-        AppstoreService(get(), get(), p.get(), get(), get(), get(), get(), get(), get())
+        AppstoreService(get(), get(), p.get(), get(), get(), get(), get(), get(), get(), get())
     }
     single {
         object : LibPebbleLockerProxy {
