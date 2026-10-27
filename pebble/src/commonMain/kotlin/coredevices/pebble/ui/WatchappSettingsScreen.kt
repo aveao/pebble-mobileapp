@@ -38,6 +38,7 @@ import com.multiplatform.webview.web.rememberWebViewState
 import coreapp.util.generated.resources.Res
 import coreapp.util.generated.resources.back
 import coredevices.pebble.config.ConfigPageBridge
+import coredevices.pebble.config.ConfigPageClosedListener
 import coredevices.pebble.config.ConfigPageSessions
 import coredevices.pebble.config.ConfigScriptIds
 import coredevices.pebble.config.PluginConfigFileAccess
@@ -113,8 +114,12 @@ fun WatchappSettingsScreen(
         }
     }
     val url = resolvedUrl?.let(::normalizeWatchappSettingsUrl) ?: return
+    val closedListener: ConfigPageClosedListener = koinInject()
     DisposableEffect(uuid) {
-        onDispose { WatchappSettingsUrlCache.remove(uuid) }
+        onDispose {
+            WatchappSettingsUrlCache.remove(uuid)
+            runCatching { Uuid.parse(uuid) }.getOrNull()?.let(closedListener::onConfigPageClosed)
+        }
     }
     Box(modifier = Modifier.background(MaterialTheme.colorScheme.background)) {
         val sessions: ConfigPageSessions = koinInject()

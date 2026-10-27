@@ -28,6 +28,7 @@ import coredevices.ring.agent.builtin_servlets.calendar.TargetCalendarSeeder
 import coredevices.ring.agent.builtin_servlets.reminders.BuiltInReminderFeedItems
 import coredevices.ring.agent.builtin_servlets.reminders.BuiltInReminderIntegration
 import coredevices.pebble.ui.IndexTabBadge
+import coredevices.ring.agent.integrations.providers.DefaultDestinationPrompter
 import coredevices.ring.agent.integrations.providers.IntegrationProviderRepository
 import coredevices.ring.agent.integrations.providers.LegacyDestinations
 import coredevices.ring.agent.integrations.providers.pluginsEnabled
@@ -294,6 +295,7 @@ val experimentalModule = module {
     singleOf(::BuiltInReminderFeedItems)
     singleOf(::DelegatedIntegrationItems)
     single { IntegrationProviderRepository(get(), get(), get(), get()) }
+    single { DefaultDestinationPrompter(get(), get()) }
     single { LegacyDestinations(get(), get(), get<LibPebble>().pluginsEnabled()) } bind IndexTabBadge::class
     singleOf(::ShortcutActionHandler)
     singleOf(::ShareActionHandler)
