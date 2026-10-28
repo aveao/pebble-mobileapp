@@ -16,6 +16,7 @@ import dev.gitlive.firebase.firestore.QuerySnapshot
 import dev.gitlive.firebase.firestore.code
 import io.rebble.libpebblecommon.database.entity.APP_VERSION_REGEX
 import io.rebble.libpebblecommon.database.entity.LockerAppPermission
+import io.rebble.libpebblecommon.locker.AppType
 import io.rebble.libpebblecommon.permissions.PermissionDecisionRecord
 import io.rebble.libpebblecommon.web.LockerEntry
 import io.rebble.libpebblecommon.web.LockerModel
@@ -188,7 +189,8 @@ class RealFirestoreLocker(
         }
         logger.d { "Adding ${appsToAdd.size} apps to locker from firestore update" }
         libPebbleLockerProxy.addAppsToLocker(appsToAdd, added.syncedPermissions())
-        if (appsToAdd.size == 1) {
+        // A plugin-only app never reaches the watch.
+        if (appsToAdd.size == 1 && AppType.fromString(appsToAdd.first().type) != AppType.Plugin) {
             logger.d { "...and starting single new app on watch" }
             val app = appsToAdd.first()
             val uuid = Uuid.parse(app.uuid)
