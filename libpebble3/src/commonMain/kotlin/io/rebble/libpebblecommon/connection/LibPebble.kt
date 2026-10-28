@@ -58,6 +58,7 @@ import io.rebble.libpebblecommon.performPlatformSpecificInit
 import io.rebble.libpebblecommon.plugin.LockerPluginLoader
 import io.rebble.libpebblecommon.permissions.AppPermissions
 import io.rebble.libpebblecommon.permissions.AppPermissionsApi
+import io.rebble.libpebblecommon.permissions.PermissionDecisionRecord
 import io.rebble.libpebblecommon.permissions.AppPermissionStatus
 import io.rebble.libpebblecommon.permissions.InstallReview
 import io.rebble.libpebblecommon.permissions.RequestedPermissions
@@ -436,7 +437,11 @@ interface LockerApi {
     suspend fun waitUntilAppSyncedToWatch(id: Uuid, identifier: PebbleIdentifier, timeout: Duration): Boolean
     suspend fun removeApp(id: Uuid): Boolean
     suspend fun addAppToLocker(app: LockerEntry, granted: Map<String, Boolean?> = emptyMap())
-    suspend fun addAppsToLocker(apps: List<LockerEntry>)
+    /** [permissions]: the user's decisions for these apps from other devices or the web store. */
+    suspend fun addAppsToLocker(
+        apps: List<LockerEntry>,
+        permissions: Map<Uuid, Map<String, PermissionDecisionRecord>>,
+    )
     /** Lets the next locker sync replace a sideloaded app with its copy in the user's locker. */
     suspend fun clearSideloaded(id: Uuid)
     fun restoreSystemAppOrder()

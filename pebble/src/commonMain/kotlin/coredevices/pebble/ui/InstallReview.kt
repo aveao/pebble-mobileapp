@@ -64,6 +64,7 @@ import coredevices.util.relativeTime
 import io.rebble.libpebblecommon.permissions.AppPermissionStatus
 import io.rebble.libpebblecommon.permissions.InstallReview
 import io.rebble.libpebblecommon.permissions.PermissionKind
+import io.rebble.libpebblecommon.permissions.PermissionPolicy
 import io.rebble.libpebblecommon.permissions.PermissionStatus
 import io.ktor.http.decodeURLPart
 import io.rebble.libpebblecommon.permissions.domainOf
@@ -82,6 +83,7 @@ import kotlin.uuid.Uuid
 fun InstallReviewDialog(review: InstallReview, onAnswer: (Map<String, Boolean>?) -> Unit) {
     val defined = rememberPluginPermissions()
     val decisions = remember(review) { mutableStateMapOf<String, Boolean>() }
+    val policy = rememberLibPebble().config.collectAsState().value.watchConfig.permissionPolicy
     // Allowing WriteFiles includes reading, so ReadFiles follows it.
     fun decisionOf(key: String): Boolean? =
         if (key == PluginPermissions.READ_FILES && decisions[PluginPermissions.WRITE_FILES] == true) true else decisions[key]
@@ -90,28 +92,70 @@ fun InstallReviewDialog(review: InstallReview, onAnswer: (Map<String, Boolean>?)
         title = { Text("Install ${review.appName}?") },
         text = {
             Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
-                Text("It wants to:", style = MaterialTheme.typography.bodyMedium)
-                review.toReview.forEach { key ->
-                    PermissionRow(key, defined) {
-                        val decision = decisionOf(key)
-                        DecisionChoice(decision, enabled = decision == decisions[key]) { decisions[key] = it }
+                if (review.toReview.isNotEmpty()) {
+                    Text("It wants to:", style = MaterialTheme.typography.bodyMedium)
+                    review.toReview.forEach { key ->
+                        PermissionRow(key, defined) {
+                            val decision = decisionOf(key)
+                            DecisionChoice(decision, enabled = decision == decisions[key]) { decisions[key] = it }
+                        }
+                    }
+                    // At the end of the list, so it's only reached after scrolling past every permission.
+                    TextButton(
+                        onClick = { review.toReview.forEach { decisions[it] = true } },
+                        modifier = Modifier.align(Alignment.End),
+                    ) { Text("Allow all") }
+                }
+                if (review.automatic.isNotEmpty()) {
+                    var expanded by remember(review) { mutableStateOf(false) }
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.fillMaxWidth().padding(top = 8.dp).clickable { expanded = !expanded },
+                    ) {
+                        Text(
+                            "Allowed automatically (${review.automatic.size})",
+                            style = MaterialTheme.typography.titleSmall,
+                            modifier = Modifier.weight(1f),
+                        )
+                        Icon(
+                            if (expanded) Icons.Filled.KeyboardArrowUp else Icons.Filled.KeyboardArrowDown,
+                            contentDescription = if (expanded) "Collapse" else "Expand",
+                        )
+                    }
+                    if (expanded) {
+                        Text(
+                            automaticExplanation(review.appName, policy),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(bottom = 4.dp),
+                        )
+                        review.automatic.forEach { key ->
+                            PermissionRow(key, defined) {
+                                DecisionChoice(decisions[key], enabled = true) { decisions[key] = it }
+                            }
+                        }
                     }
                 }
-                // At the end of the list, so it's only reached after scrolling past every permission.
-                TextButton(
-                    onClick = { review.toReview.forEach { decisions[it] = true } },
-                    modifier = Modifier.align(Alignment.End),
-                ) { Text("Allow all") }
             }
         },
         confirmButton = {
             TextButton(
-                onClick = { onAnswer(review.toReview.associateWith { decisionOf(it)!! }) },
+                onClick = {
+                    val automatic = review.automatic.mapNotNull { key -> decisions[key]?.let { key to it } }
+                    onAnswer(review.toReview.associateWith { decisionOf(it)!! } + automatic)
+                },
                 enabled = review.toReview.all { decisionOf(it) != null },
             ) { Text("Install") }
         },
         dismissButton = { TextButton(onClick = { onAnswer(null) }) { Text("Cancel") } },
     )
+}
+
+private fun automaticExplanation(appName: String, policy: PermissionPolicy) = when (policy) {
+    PermissionPolicy.NeverAsk ->
+        "You don't need to do anything here: your settings allow every permission. Deny any you'd rather $appName didn't use."
+    else ->
+        "You don't need to do anything here. $appName can't send data off your phone, so these are allowed under your current settings. Deny any you'd rather it didn't use."
 }
 
 @Composable

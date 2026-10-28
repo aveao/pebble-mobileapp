@@ -649,6 +649,26 @@ class WaitingRequestsTest {
     }
 
     @Test
+    fun aSyncedDecisionReplacesOnlyAnOlderOrMissingOne() = runTest {
+        val permissions = permissions(dao, clock = FixedClock(5_000))
+        permissions.setDecisions(APP, mapOf(CALENDAR to true, LOCATION to true))
+        permissions.recordRequested(APP, listOf(TIMELINE))
+        permissions.mergePermissionDecisions(
+            APP,
+            mapOf(
+                CALENDAR to PermissionDecisionRecord(granted = false, decidedAtMs = 9_000),
+                LOCATION to PermissionDecisionRecord(granted = false, decidedAtMs = 1_000),
+                TIMELINE to PermissionDecisionRecord(granted = true, decidedAtMs = 1_000),
+            ),
+        )
+        assertEquals(false, dao.row(CALENDAR)!!.granted)
+        assertEquals(9_000, dao.row(CALENDAR)!!.decidedAtMs)
+        assertEquals(true, dao.row(LOCATION)!!.granted)
+        assertEquals(true, dao.row(TIMELINE)!!.granted)
+        assertEquals(listOf(CALENDAR, LOCATION, TIMELINE), permissions.permissionDecisions().first().map { it.permission }.sorted())
+    }
+
+    @Test
     fun aNullDecisionRecordsASeenUndecidedRow() = runTest {
         permissions(dao).setDecisions(APP, mapOf(CALENDAR to null))
         val row = dao.row(CALENDAR)!!
@@ -797,6 +817,24 @@ class InstallReviewTest {
             declares(internet("a.example.com", ".B.example.com"), PluginPermission(LOCAL_NETWORK)).all,
         )
         assertEquals(listOf(INTERNET), declares(PluginPermission(INTERNET)).all)
+    }
+
+    @Test
+    fun readsAnAppCantSendAnywhereAreListedAsAutomaticRatherThanReviewed() = runTest {
+        val offline = declares(PluginPermission(LOCATION), PluginPermission(TIMELINE))
+        assertEquals(listOf(TIMELINE), permissions.toReview(APP, offline))
+        assertEquals(listOf(LOCATION), permissions.automaticallyGranted(APP, offline))
+
+        val online = declares(PluginPermission(LOCATION), internet("example.com"))
+        assertEquals(emptyList(), permissions.automaticallyGranted(APP, online))
+
+        permissions.setDecisions(APP, mapOf(LOCATION to false))
+        assertEquals(emptyList(), permissions.automaticallyGranted(APP, offline))
+    }
+
+    @Test
+    fun aLegacyAppHasNoAutomaticListBecauseNothingWasDeclared() = runTest {
+        assertEquals(emptyList(), permissions.automaticallyGranted(APP, RequestedPermissions(declared = null, hasPkjs = true)))
     }
 
     @Test

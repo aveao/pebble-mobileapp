@@ -38,6 +38,7 @@ import io.rebble.libpebblecommon.plugin.files.PluginFileAccess
 import io.rebble.libpebblecommon.storage.pluginSecureStorage
 import io.rebble.libpebblecommon.permissions.InstallReview
 import io.rebble.libpebblecommon.permissions.NetworkGate
+import io.rebble.libpebblecommon.permissions.PermissionDecisionRecord
 import io.rebble.libpebblecommon.permissions.RequestedPermissions
 import io.rebble.libpebblecommon.permissions.isLegacy
 import io.rebble.libpebblecommon.permissions.requestedPermissions
@@ -301,8 +302,10 @@ class Locker(
     }
 
     override suspend fun reviewInstall(appUuid: Uuid, appName: String, requested: RequestedPermissions): InstallReview? {
+        if (!config.value.enablePlugins) return null
         val toReview = permissions.toReview(appUuid, requested)
-        return if (toReview.isEmpty()) null else InstallReview(appUuid, appName, toReview)
+        val automatic = permissions.automaticallyGranted(appUuid, requested)
+        return if (toReview.isEmpty() && automatic.isEmpty()) null else InstallReview(appUuid, appName, toReview, automatic)
     }
 
     internal suspend fun recordDeclaredPermissions(appId: Uuid, pbwPath: Path) {
@@ -331,7 +334,12 @@ class Locker(
         permissions.setDecisions(Uuid.parse(app.uuid), granted)
     }
 
-    override suspend fun addAppsToLocker(apps: List<io.rebble.libpebblecommon.web.LockerEntry>) {
+    override suspend fun addAppsToLocker(
+        apps: List<io.rebble.libpebblecommon.web.LockerEntry>,
+        permissions: Map<Uuid, Map<String, PermissionDecisionRecord>>,
+    ) {
+        // Before the apps exist, so none starts without the answers the user already gave.
+        mergeDecisions(permissions)
         lockerEntryDao.insertOrReplaceAndOrder(apps.map { app ->
             val orderIndex = orderIndexForInsert(AppType.fromString(app.type) ?: AppType.Watchface)
             app.asEntity(orderIndex)
@@ -348,8 +356,13 @@ class Locker(
 
     suspend fun getApp(uuid: Uuid): LockerEntry? = lockerEntryDao.getEntry(uuid)
 
+    private suspend fun mergeDecisions(byApp: Map<Uuid, Map<String, PermissionDecisionRecord>>) {
+        byApp.forEach { (uuid, decisions) -> permissions.mergePermissionDecisions(uuid, decisions) }
+    }
+
     suspend fun update(locker: LockerModelWrapper) {
         logger.d("update: ${locker.locker.applications.size}")
+        mergeDecisions(locker.permissions)
         val existingApps = lockerEntryDao.getAll().associateBy { it.id }.toMutableMap()
         val toInsert = locker.locker.applications.mapNotNull { new ->
             val newEntity = new.asEntity(orderIndexForInsert(AppType.fromString(new.type) ?: AppType.Watchface))
