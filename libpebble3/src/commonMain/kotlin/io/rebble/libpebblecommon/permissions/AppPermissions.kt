@@ -38,7 +38,7 @@ enum class PermissionPolicy {
     AskIfExfiltrating,
     /** Asks for everything. */
     AlwaysAsk,
-    /** Grants requests automatically. */
+    /** Grants requests automatically, except dangerous ones. */
     NeverAsk,
 }
 
@@ -453,7 +453,11 @@ internal fun decidePermission(
     if (!config.enablePlugins) return PermissionDecision.Granted
     val rows = rows.filterNot { config.disables(it.permission) }
     val decision = decideAsking(permission, subject, rows, config, pluginDefined)
-    return if (decision == PermissionDecision.NeedsApproval && config.permissionPolicy == PermissionPolicy.NeverAsk) {
+    return if (
+        decision == PermissionDecision.NeedsApproval &&
+        config.permissionPolicy == PermissionPolicy.NeverAsk &&
+        permissionKind(permission, pluginDefined) != PermissionKind.Dangerous
+    ) {
         PermissionDecision.Granted
     } else {
         decision

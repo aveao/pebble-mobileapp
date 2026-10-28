@@ -15,6 +15,8 @@ enum class PermissionKind {
     @SerialName("write") Write,
     /** Lets data leave the phone. */
     @SerialName("exfiltrating") Exfiltrating,
+    /** So sensitive that every mode asks, even Never. */
+    @SerialName("dangerous") Dangerous,
 }
 
 data class PermissionDefinition(
@@ -32,7 +34,7 @@ object PermissionRegistry {
         PermissionDefinition(PluginPermissions.GLOBAL_INTERNET, PermissionKind.Exfiltrating),
         PermissionDefinition(PluginPermissions.LOCATION, PermissionKind.Read),
         PermissionDefinition(PluginPermissions.WATCH_MICROPHONE, PermissionKind.Read),
-        PermissionDefinition(PluginPermissions.NOTIFICATIONS, PermissionKind.Read, SourceInstance.PROPERTY_PACKAGE),
+        PermissionDefinition(PluginPermissions.NOTIFICATIONS, PermissionKind.Dangerous, SourceInstance.PROPERTY_PACKAGE),
         PermissionDefinition(PluginPermissions.CALENDAR, PermissionKind.Read),
         PermissionDefinition(PluginPermissions.CONTACTS, PermissionKind.Read),
         PermissionDefinition(PluginPermissions.TIMELINE, PermissionKind.Write),

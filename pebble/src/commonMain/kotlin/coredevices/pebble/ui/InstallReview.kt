@@ -30,6 +30,7 @@ import androidx.compose.material.icons.filled.Public
 import androidx.compose.material.icons.filled.Router
 import androidx.compose.material.icons.filled.SwapHoriz
 import androidx.compose.material.icons.filled.ViewTimeline
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material.icons.filled.Watch
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material3.AlertDialog
@@ -94,7 +95,7 @@ fun InstallReviewDialog(review: InstallReview, onAnswer: (Map<String, Boolean>?)
             Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
                 if (review.toReview.isNotEmpty()) {
                     Text("It wants to:", style = MaterialTheme.typography.bodyMedium)
-                    review.toReview.forEach { key ->
+                    review.toReview.byKind(defined).forEach { key ->
                         PermissionRow(key, defined) {
                             val decision = decisionOf(key)
                             DecisionChoice(decision, enabled = decision == decisions[key]) { decisions[key] = it }
@@ -129,7 +130,7 @@ fun InstallReviewDialog(review: InstallReview, onAnswer: (Map<String, Boolean>?)
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.padding(bottom = 4.dp),
                         )
-                        review.automatic.forEach { key ->
+                        review.automatic.byKind(defined).forEach { key ->
                             PermissionRow(key, defined) {
                                 DecisionChoice(decisions[key], enabled = true) { decisions[key] = it }
                             }
@@ -153,7 +154,7 @@ fun InstallReviewDialog(review: InstallReview, onAnswer: (Map<String, Boolean>?)
 
 private fun automaticExplanation(appName: String, policy: PermissionPolicy) = when (policy) {
     PermissionPolicy.NeverAsk ->
-        "You don't need to do anything here: your settings allow every permission. Deny any you'd rather $appName didn't use."
+        "You don't need to do anything here: your settings allow these. Deny any you'd rather $appName didn't use."
     else ->
         "You don't need to do anything here. $appName can't send data off your phone, so these are allowed under your current settings. Deny any you'd rather it didn't use."
 }
@@ -181,31 +182,45 @@ private fun PermissionRow(
                 Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
-        if (permissionKind(key, defined) == PermissionKind.Exfiltrating) ExfiltratingInfo(key)
+        when (permissionKind(key, defined)) {
+            PermissionKind.Exfiltrating ->
+                KindInfo(Icons.Outlined.Info, "Sends data off your phone", exfiltratingExplanation(key))
+            PermissionKind.Dangerous ->
+                KindInfo(Icons.Filled.Warning, "Sensitive", "Sensitive permissions always need your approval, whatever your settings.")
+            else -> {}
+        }
         control()
     }
 }
 
 @Composable
-private fun ExfiltratingInfo(key: String) {
+private fun KindInfo(icon: ImageVector, title: String, explanation: String) {
     var explaining by remember { mutableStateOf(false) }
     Icon(
-        Icons.Outlined.Info,
-        contentDescription = "Can send data off your phone",
+        icon,
+        contentDescription = title,
         tint = MaterialTheme.colorScheme.error,
         modifier = Modifier.padding(end = 8.dp).size(18.dp).clickable { explaining = true },
     )
     if (explaining) {
         AlertDialog(
             onDismissRequest = { explaining = false },
-            title = { Text("Sends data off your phone") },
-            text = {
-                Text(exfiltratingExplanation(key))
-            },
+            title = { Text(title) },
+            text = { Text(explanation) },
             confirmButton = { TextButton(onClick = { explaining = false }) { Text("OK") } },
         )
     }
 }
+
+private fun kindRank(key: String, defined: Map<String, PluginDefinedPermission>) = when (permissionKind(key, defined)) {
+    PermissionKind.Dangerous -> 0
+    PermissionKind.Exfiltrating -> 1
+    PermissionKind.Write -> 2
+    PermissionKind.Read -> 3
+    null -> 4
+}
+
+private fun List<String>.byKind(defined: Map<String, PluginDefinedPermission>) = sortedBy { kindRank(it, defined) }
 
 private fun exfiltratingExplanation(key: String) = when (permissionOf(key)) {
     PluginPermissions.GLOBAL_INTERNET ->
@@ -380,7 +395,7 @@ fun AppPermissionsSection(appUuid: Uuid) {
         } else {
             Text("Permissions", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(bottom = 4.dp))
         }
-        statuses.forEach { row ->
+        statuses.sortedBy { kindRank(it.permission, defined) }.forEach { row ->
             val lastUsedAtMs = row.lastUsedAtMs
             val used = if (lastUsedAtMs == null) "Not used yet" else "Used ${relativeTime(Instant.fromEpochMilliseconds(lastUsedAtMs))}"
             val note = if (row.status == PermissionStatus.AllowedAutomatically) "Allowed automatically · $used" else used
@@ -466,7 +481,7 @@ fun StorePermissionsSection(requested: RequestedPermissions) {
             }
             Text(text, style = MaterialTheme.typography.bodyMedium)
         } else {
-            keys.forEach { PermissionRow(it, defined) {} }
+            keys.byKind(defined).forEach { PermissionRow(it, defined) {} }
         }
     }
 }

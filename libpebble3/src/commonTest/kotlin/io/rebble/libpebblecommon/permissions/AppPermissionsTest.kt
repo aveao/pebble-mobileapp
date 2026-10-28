@@ -95,6 +95,17 @@ class DecidePermissionTest {
     }
 
     @Test
+    fun dangerousPermissionsAlwaysNeedApproval() {
+        for (policy in PermissionPolicy.entries) {
+            val config = WatchConfig(enablePlugins = true, permissionPolicy = policy)
+            assertEquals(NeedsApproval, decide(NOTIFICATIONS, config = config))
+            assertEquals(NeedsApproval, decide(notificationsKey("com.example"), config = config))
+            assertEquals(NeedsApproval, decide("Messages", config = config, pluginDefined = mapOf("Messages" to PermissionKind.Dangerous)))
+            assertEquals(Granted, decide(NOTIFICATIONS, rows = listOf(row(NOTIFICATIONS, true)), config = config))
+        }
+    }
+
+    @Test
     fun legacyMicrophoneAccessIsNotImplicit() {
         assertEquals(NeedsApproval, decide(WATCH_MICROPHONE, subject(legacy = true), listOf(row(GLOBAL_INTERNET))))
     }
