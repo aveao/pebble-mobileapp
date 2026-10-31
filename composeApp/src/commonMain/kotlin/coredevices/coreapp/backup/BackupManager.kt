@@ -5,16 +5,20 @@ import com.oldguy.common.io.File
 import com.oldguy.common.io.FileMode
 import com.oldguy.common.io.ZipEntry
 import com.oldguy.common.io.ZipFile
+import com.russhwolf.settings.Settings
 import coredevices.database.CoreDatabase
+import coredevices.pebble.plugin.PreferencesPlugin
 import coredevices.ring.agent.integrations.providers.LegacyProviderIds
 import coredevices.ring.database.Preferences
 import coredevices.ring.database.room.RingDatabase
+import coredevices.ring.service.button.GestureRoutingPreferences
 import coredevices.util.BackupRestore
 import coredevices.util.CoreConfigHolder
 import coredevices.util.Platform
 import coredevices.util.isAndroid
 import io.rebble.libpebblecommon.connection.AppContext
 import io.rebble.libpebblecommon.connection.LibPebble
+import io.rebble.libpebblecommon.plugin.PluginRegistry
 import io.rebble.libpebblecommon.util.getTempFilePath
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
@@ -37,6 +41,7 @@ class BackupManager(
     private val coreConfigHolder: CoreConfigHolder,
     private val libPebble: LibPebble,
     private val preferences: Preferences,
+    private val settings: Settings,
     private val platform: Platform,
     private val clock: Clock = Clock.System,
 ) : BackupRestore {
@@ -46,6 +51,13 @@ class BackupManager(
         encodeDefaults = true
         ignoreUnknownKeys = true
     }
+
+    // Settings-backed data not serialised through the configs or the ring preferences
+    private val rawSettingsKeys: Set<String> =
+        (GestureRoutingPreferences.commandStorageKeys() + setOf(
+            PluginRegistry.PREFERRED_SOURCES_KEY,
+            PreferencesPlugin.COMPLICATIONS_KEY,
+        )).toSet()
 
     private val dbFiles: Map<String, String>
         get() = mapOf(
@@ -180,6 +192,9 @@ class BackupManager(
             coreConfig = coreConfigHolder.config.first(),
             libPebbleConfig = libPebble.config.first(),
             ringPreferences = exportRingPreferences(),
+            rawSettings = rawSettingsKeys.mapNotNull { key ->
+                settings.getStringOrNull(key)?.let { key to it }
+            }.toMap(),
         )
     }
 
@@ -207,13 +222,15 @@ class BackupManager(
             targetCalendar = preferences.targetCalendar.value,
             scanByPairedAddress = preferences.scanByPairedAddress.value,
             usePendingIntentScan = preferences.usePendingIntentScan.value.takeIf { platform.isAndroid },
+            defaultDestinationAsked = preferences.defaultDestinationAsked,
         )
     }
 
-    private suspend fun restoreSettings(settings: SettingsExport) {
-        settings.coreConfig?.let { coreConfigHolder.update(it) }
-        settings.libPebbleConfig?.let { libPebble.updateConfig(it) }
-        settings.ringPreferences?.let { restoreRingPreferences(it) }
+    private suspend fun restoreSettings(export: SettingsExport) {
+        export.coreConfig?.let { coreConfigHolder.update(it) }
+        export.libPebbleConfig?.let { libPebble.updateConfig(it) }
+        export.ringPreferences?.let { restoreRingPreferences(it) }
+        export.rawSettings.forEach { (key, value) -> settings.putString(key, value) }
     }
 
     private suspend fun restoreRingPreferences(prefs: RingPreferencesExport) {
@@ -245,6 +262,7 @@ class BackupManager(
         if (platform.isAndroid) {
             prefs.usePendingIntentScan?.let { preferences.setUsePendingIntentScan(it) }
         }
+        prefs.defaultDestinationAsked.forEach { preferences.markDefaultDestinationAsked(it) }
         prefs.noteShortcut?.let {
             try {
                 val shortcut = LegacyProviderIds.migrate(

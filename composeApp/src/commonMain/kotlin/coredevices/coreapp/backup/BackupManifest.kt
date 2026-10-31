@@ -13,6 +13,7 @@ data class SettingsExport(
     val coreConfig: CoreConfig? = null,
     val libPebbleConfig: LibPebbleConfig? = null,
     val ringPreferences: RingPreferencesExport? = null,
+    val rawSettings: Map<String, String> = emptyMap(),
 )
 
 @Serializable
@@ -41,4 +42,5 @@ data class RingPreferencesExport(
     val scanByPairedAddress: Boolean? = null,
     // Android only; null when exported on iOS where the preference doesn't exist
     val usePendingIntentScan: Boolean? = null,
+    val defaultDestinationAsked: Set<String> = emptySet(),
 )

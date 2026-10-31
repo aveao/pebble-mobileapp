@@ -191,7 +191,7 @@ class PreferencesPlugin(
         const val PROPERTY_CURRENT = "current"
 
         private const val INSTANCE_UNITS = "units"
-        private const val COMPLICATIONS_KEY = "complication_slots"
+        const val COMPLICATIONS_KEY = "complication_slots"
 
         const val SLOT_COUNT = 5
 
