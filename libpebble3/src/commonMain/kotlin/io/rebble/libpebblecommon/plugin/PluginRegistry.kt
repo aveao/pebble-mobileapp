@@ -113,7 +113,7 @@ class PluginRegistry(
 
     companion object {
         private const val DISABLED_BUILT_INS_KEY = "disabled_built_in_plugins"
-        private const val PREFERRED_SOURCES_KEY = "preferred_source_plugins"
+        const val PREFERRED_SOURCES_KEY = "preferred_source_plugins"
 
         fun sourceKey(category: String, item: String) = "$category/$item"
     }

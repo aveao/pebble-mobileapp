@@ -11,6 +11,8 @@ import coredevices.analytics.RealCoreAnalytics
 import coredevices.api.EngDashOtaApi
 import coredevices.api.EngDashOtaApiImpl
 import coredevices.api.WisprFlowAuth
+import coredevices.coreapp.backup.BackupManager
+import coredevices.util.BackupRestore
 import coredevices.coreapp.CommonAppDelegate
 import coredevices.coreapp.plugins.AppstorePluginStore
 import coredevices.pebble.config.ConfigPageClosedListener
@@ -73,6 +75,7 @@ val utilModule = module {
         }
     }
 
+    singleOf(::BackupManager) bind BackupRestore::class
     singleOf(::FileLogWriter)
     singleOf(::BugReportProcessor)
     singleOf(::NextBugReportContext)

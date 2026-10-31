@@ -20,6 +20,8 @@ class GestureRoutingPreferences(
         private const val LEGACY_LLM_MODE_KEY = "llm_mode"
         private const val LEGACY_LLM_MODE_LOCAL_ONLY = 1
         private const val LEGACY_LOCAL_LLM_SWITCH_KEY = "use_cactus_agent"
+
+        fun commandStorageKeys(): List<String> = RingGesture.entries.map { COMMAND_KEY_PREFIX + it.name }
     }
 
     private val _routes = MutableStateFlow(
