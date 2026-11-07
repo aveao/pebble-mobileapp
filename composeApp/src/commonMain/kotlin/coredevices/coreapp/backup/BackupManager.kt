@@ -11,6 +11,7 @@ import coredevices.pebble.plugin.PreferencesPlugin
 import coredevices.ring.agent.integrations.providers.LegacyProviderIds
 import coredevices.ring.database.Preferences
 import coredevices.ring.database.room.RingDatabase
+import coredevices.ring.external.indexwebhook.IndexWebhookPreferences
 import coredevices.ring.service.button.GestureRoutingPreferences
 import coredevices.util.BackupRestore
 import coredevices.util.CoreConfigHolder
@@ -54,10 +55,12 @@ class BackupManager(
 
     // Settings-backed data not serialised through the configs or the ring preferences
     private val rawSettingsKeys: Set<String> =
-        (GestureRoutingPreferences.commandStorageKeys() + setOf(
-            PluginRegistry.PREFERRED_SOURCES_KEY,
-            PreferencesPlugin.COMPLICATIONS_KEY,
-        )).toSet()
+        (GestureRoutingPreferences.commandStorageKeys() +
+            IndexWebhookPreferences.configStorageKeys() +
+            setOf(
+                PluginRegistry.PREFERRED_SOURCES_KEY,
+                PreferencesPlugin.COMPLICATIONS_KEY,
+            )).toSet()
 
     private val dbFiles: Map<String, String>
         get() = mapOf(
