@@ -72,6 +72,8 @@ class IndexWebhookPreferences(private val settings: Settings) {
 
         val gestures = RingGesture.entries.filter { it.kind == GestureKind.Recording }
 
+        fun configStorageKeys(): List<String> = gestures.map { CONFIG_KEY_PREFIX + it.name }
+
         private val json = Json { ignoreUnknownKeys = true }
         private val legacyHeadersSerializer = MapSerializer(String.serializer(), String.serializer())
     }

@@ -70,6 +70,9 @@ object CommonRoutes {
 
     const val SPEECH_MODEL_DOWNLOAD_DEEP_LINK_PATH = "speech-model"
     const val SPEECH_MODEL_DOWNLOAD_DEEP_LINK = "pebblecore://deep-link/$SPEECH_MODEL_DOWNLOAD_DEEP_LINK_PATH"
+
+    @Serializable
+    data object LogViewerRoute : CoreRoute
 }
 
 @Stable
