@@ -10,12 +10,14 @@ import io.rebble.libpebblecommon.calendar.NewCalendarEvent
 import io.rebble.libpebblecommon.calls.Call
 import io.rebble.libpebblecommon.connection.bt.BluetoothState
 import io.rebble.libpebblecommon.connection.bt.ble.pebble.ReversePpogVersion
+import io.rebble.libpebblecommon.connection.endpointmanager.FirmwareUpdateTrigger
 import io.rebble.libpebblecommon.connection.endpointmanager.FirmwareUpdater
 import io.rebble.libpebblecommon.connection.endpointmanager.InstalledLanguagePack
 import io.rebble.libpebblecommon.connection.endpointmanager.LanguagePackInstallState
 import io.rebble.libpebblecommon.connection.endpointmanager.WatchLanguagePack
 import io.rebble.libpebblecommon.connection.endpointmanager.musiccontrol.MusicTrack
 import io.rebble.libpebblecommon.connection.endpointmanager.timeline.CustomTimelineActionHandler
+import io.rebble.libpebblecommon.connection.endpointmanager.timeline.InternalActionHandler
 import io.rebble.libpebblecommon.database.asMillisecond
 import io.rebble.libpebblecommon.database.dao.AppWithCount
 import io.rebble.libpebblecommon.database.dao.ChannelAndCount
@@ -36,6 +38,7 @@ import io.rebble.libpebblecommon.database.entity.NotificationRuleEntity
 import io.rebble.libpebblecommon.database.entity.OverlayDataEntity
 import io.rebble.libpebblecommon.database.entity.TimelineNotification
 import io.rebble.libpebblecommon.database.entity.TimelinePin
+import io.rebble.libpebblecommon.database.entity.TimelineReminder
 import io.rebble.libpebblecommon.database.entity.WatchPref
 import io.rebble.libpebblecommon.database.entity.WeatherAppEntry
 import io.rebble.libpebblecommon.database.entity.LockerAppPermission
@@ -490,6 +493,15 @@ class FakeLibPebble : LibPebble {
     override fun delete(pinUuid: Uuid) {
     }
 
+    override suspend fun insertOrReplace(reminder: TimelineReminder) {
+    }
+
+    override suspend fun deleteReminder(reminderUuid: Uuid) {
+    }
+
+    override fun setActionHandler(internalType: String, handler: InternalActionHandler) {
+    }
+
     override fun vibePatterns(): Flow<List<VibePattern>> {
         return flow {
             emit(
@@ -658,8 +670,9 @@ fun fakeWatch(connected: Boolean = Random.nextBoolean()): PebbleDevice {
                 )!!,
                 url = "",
                 notes = "v4.9.9-core1 is great",
+                installsDirectly = true,
             )
-            FirmwareUpdater.FirmwareUpdateStatus.InProgress(fakeUpdate, MutableStateFlow(0.47f))
+            FirmwareUpdater.FirmwareUpdateStatus.InProgress(fakeUpdate, MutableStateFlow(0.47f), FirmwareUpdateTrigger.Ui)
         } else {
             FirmwareUpdater.FirmwareUpdateStatus.NotInProgress.Idle()
         }
@@ -675,6 +688,7 @@ fun fakeWatch(connected: Boolean = Random.nextBoolean()): PebbleDevice {
                 )!!,
                 url = "http://something",
                 notes = "update!!",
+                installsDirectly = true,
             )
         } else {
             null
@@ -746,9 +760,9 @@ class FakeConnectedDevice(
     override val inboundMessages: Flow<PebblePacket> = MutableSharedFlow()
     override val rawInboundMessages: Flow<ByteArray> = MutableSharedFlow()
 
-    override fun sideloadFirmware(path: Path) {}
+    override fun sideloadFirmware(path: Path, trigger: FirmwareUpdateTrigger) {}
 
-    override fun updateFirmware(update: FirmwareUpdateCheckResult.FoundUpdate) {}
+    override fun updateFirmware(update: FirmwareUpdateCheckResult.FoundUpdate, trigger: FirmwareUpdateTrigger) {}
 
     override fun checkforFirmwareUpdate(force: Boolean) {}
 
@@ -895,9 +909,9 @@ class FakeConnectedDeviceInRecovery(
     override fun disconnect() {}
     override val reversePpogVersion: ReversePpogVersion? = null
 
-    override fun sideloadFirmware(path: Path) {}
+    override fun sideloadFirmware(path: Path, trigger: FirmwareUpdateTrigger) {}
 
-    override fun updateFirmware(update: FirmwareUpdateCheckResult.FoundUpdate) {}
+    override fun updateFirmware(update: FirmwareUpdateCheckResult.FoundUpdate, trigger: FirmwareUpdateTrigger) {}
 
     override fun checkforFirmwareUpdate(force: Boolean) {}
 
