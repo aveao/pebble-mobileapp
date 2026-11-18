@@ -16,6 +16,7 @@ import coredevices.util.BackupRestore
 import coredevices.coreapp.CommonAppDelegate
 import coredevices.coreapp.plugins.AppstorePluginStore
 import coredevices.pebble.config.ConfigPageClosedListener
+import coredevices.ring.agent.builtin_servlets.bugreport.BugReporter
 import coredevices.ring.agent.integrations.providers.DefaultDestinationPrompter
 import coredevices.pebble.health.HealthSyncTracker
 import coredevices.pebble.health.PlatformHealthSync
@@ -78,6 +79,7 @@ val utilModule = module {
     singleOf(::BackupManager) bind BackupRestore::class
     singleOf(::FileLogWriter)
     singleOf(::BugReportProcessor)
+    single { BugReporter(get<BugReportProcessor>()::newVoiceBugReport) }
     singleOf(::NextBugReportContext)
     singleOf(::CommonAppDelegate) bind CoreBackgroundSync::class
     singleOf(::PushMessaging)
