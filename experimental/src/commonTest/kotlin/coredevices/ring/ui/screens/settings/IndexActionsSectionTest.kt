@@ -178,7 +178,7 @@ class IndexActionsSectionTest {
             ActionDeclaration(
                 name = when (it) {
                     IntegrationSupport.Note -> PblPluginActionNoteIntegration.ACTION_NAME
-                    IntegrationSupport.Reminder -> PblPluginActionReminderIntegration.ACTION_NAME
+                    IntegrationSupport.Reminder, IntegrationSupport.List -> PblPluginActionReminderIntegration.ACTION_NAME
                     IntegrationSupport.Agent -> PblPluginActionAgentIntegration.ACTION_NAME
                 }
             )
@@ -188,7 +188,7 @@ class IndexActionsSectionTest {
             SourceDeclaration(
                 category = when (it) {
                     IntegrationSupport.Note -> PblPluginActionNoteIntegration.CATEGORY
-                    IntegrationSupport.Reminder -> PblPluginActionReminderIntegration.CATEGORY
+                    IntegrationSupport.Reminder, IntegrationSupport.List -> PblPluginActionReminderIntegration.CATEGORY
                     IntegrationSupport.Agent -> PblPluginActionAgentIntegration.CATEGORY
                 },
                 items = listOf("configured"),
@@ -209,7 +209,10 @@ class IndexActionsSectionTest {
         val both = StorePlugin(thingsPlugin(IntegrationSupport.Note, IntegrationSupport.Reminder).metadata, configurable = false)
 
         assertEquals("Things", both.title)
-        assertEquals(setOf(IntegrationSupport.Note, IntegrationSupport.Reminder), both.supports)
+        assertEquals(
+            setOf(IntegrationSupport.Note, IntegrationSupport.Reminder, IntegrationSupport.List),
+            both.supports,
+        )
         assertTrue(DestinationItem.InStore(both).isPlugin)
     }
 
